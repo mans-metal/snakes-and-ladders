@@ -6,11 +6,13 @@ The board, snakes, ladders and scenery are drawn from your text, so every game l
 
 It was made with Claude coding as a fun side project for a friend. Corrections and comments are welcome!
 
+**Try it:** [play the Alice in Wonderland demo](https://mans-metal.github.io/snakes-and-ladders/) or [make your own game](https://mans-metal.github.io/snakes-and-ladders/#design).
+
 ![Design mode: the board on the left, the form on the right](docs/design-mode.png)
 
 ## Make a game
 
-1. Open `index.html` in a browser and click **✎ Design your own game** under the board (or open `index.html#design`).
+1. Open [the game online](https://mans-metal.github.io/snakes-and-ladders/#design), or download `index.html` and open it in a browser, then click **✎ Design your own game** under the board.
 2. Fill in the form. The board redraws as you type.
 3. Click **Download game**. You get one `.html` file. Send it to the group, or open it on a laptop or TV at the party.
 
