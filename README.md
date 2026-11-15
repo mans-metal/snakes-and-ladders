@@ -1,8 +1,10 @@
 # Snakes & Ladders, about your friend
 
-A snakes and ladders board made out of someone's life: every ladder is a win from their year, every snake a funny setback with an escape challenge. Made for birthdays, hen dos, farewells, anniversaries.
+A customisable snakes and ladders board: every ladder is a win from their life, every snake a funny setback with an escape challenge. Made for birthdays, hen dos, farewells, anniversaries.
 
 The board, snakes, ladders and scenery are drawn from your text, so every game looks different. The whole game is **one HTML file**: no install, no account, works offline, prints well.
+
+It was made with Claude coding as a fun side project for a friend. Corrections and comments are welcome!
 
 ![Design mode: the board on the left, the form on the right](docs/design-mode.png)
 
