@@ -1,0 +1,1097 @@
+<meta charset="utf-8">
+<title>Snakes and Ladders Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,500;1,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --parchment:#EFE6D2;
+    --paper:#F8F2E4;
+    --ink:#1A1424;
+    --ink-soft:#4A4258;
+    --emerald:#2F5D50;
+    --line:rgba(26,20,36,.18);
+    --on-sky:#FFF4F2;                                             /* text that sits directly on the sky */
+  }
+  *{box-sizing:border-box}
+  /* the page is the board's dusk sky: plum at the top fading to rose, with a light scatter of stars */
+  body{margin:0; color:var(--ink); font-family:"Cormorant Garamond",Georgia,serif; min-height:100vh; background-color:#5A4170;
+    background-image:
+      radial-gradient(1.5px 1.5px at 20px 30px, #FFF1E6 50%, transparent 51%),
+      radial-gradient(1px 1px at 90px 70px, #FFF1E6 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 150px 20px, #F2B6C8 50%, transparent 51%),
+      linear-gradient(180deg, #4A3460 0%, #5A4170 18%, #74547F 45%, #946A8E 75%, #B9879E 100%);
+    background-size:180px 100px, 180px 100px, 180px 100px, auto; background-attachment:fixed}
+  .page{max-width:1180px; margin:0 auto; padding:28px 16px 56px}
+  /* main heading: a dusk-sky banner like the how-to-play header, with an "edition" ribbon */
+  header.banner{position:relative; height:clamp(120px,15vw,175px); margin-bottom:18px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border-radius:14px; overflow:hidden}
+  .banner svg{position:absolute; inset:0; width:100%; height:100%}
+  h1{position:relative; font-family:"Cinzel",serif; font-weight:700; font-size:clamp(28px,5vw,56px); letter-spacing:3px; margin:0 0 6px; text-align:center;
+    color:#FFF4F2; text-shadow:0 3px 0 var(--ink), 0 0 16px rgba(26,20,36,.6)}
+  .sub{position:relative; margin:0 0 14px; font:700 clamp(12px,1.6vw,16px) "Cinzel",serif; letter-spacing:4px; text-transform:uppercase;
+    background:var(--emerald); color:#FFF4F2; border:2px solid var(--ink); border-radius:999px; padding:5px 20px; box-shadow:3px 3px 0 rgba(26,20,36,.3)}
+  .board-wrap{position:relative; filter:drop-shadow(0 14px 24px rgba(30,15,35,.45))}
+  svg#board{width:100%; height:auto; display:block}
+  .item{cursor:pointer; transition:opacity .2s}
+  .dim .item:not(.active){opacity:.3}
+  .pop{position:absolute; z-index:5; width:250px; pointer-events:none; background:var(--paper);
+       border:2px solid var(--ink); border-radius:6px; padding:12px 14px; box-shadow:4px 4px 0 rgba(26,20,36,.25);
+       opacity:0; transform:translateY(6px); transition:opacity .15s, transform .15s}
+  .pop.show{opacity:1; transform:none}
+  .kind{font-family:"Cinzel",serif; font-size:11px; letter-spacing:1.5px; color:var(--ink-soft)}
+  .pop h3,.card h3{font-family:"Cinzel",serif; font-weight:600; font-size:17px; margin:4px 0 4px; color:var(--ink)}
+  .pop p,.card p{margin:0; font-size:17px; line-height:1.35; color:var(--ink-soft)}
+  .route{font-family:"Cinzel",serif; font-size:12px; margin-top:8px; color:var(--emerald)}
+  .cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px}
+  .card{background:var(--paper); border:2px solid var(--ink); border-radius:8px; padding:12px 14px; cursor:pointer;
+    box-shadow:0 8px 18px rgba(0,0,0,.35); transition:transform .15s}
+  .cards .card:hover,.cards .card.active{transform:translateY(-3px)}
+  .cards .card.active{outline:3px solid #E7A98F; outline-offset:2px}
+
+  /* "Read so far": the revealed cards, under the board */
+  .read{margin-top:28px}
+  .read h2{font-family:"Cinzel",serif; font-weight:700; font-size:clamp(16px,2vw,20px); letter-spacing:3px; color:var(--on-sky);
+    text-align:center; margin:0 0 14px; display:flex; align-items:center; gap:14px}
+  .read h2::before,.read h2::after{content:""; flex:1; height:2px; background:linear-gradient(90deg, transparent, rgba(255,244,242,.6), transparent)}
+  .read h2 b{background:var(--emerald); border:2px solid var(--ink); border-radius:999px; padding:5px 18px; box-shadow:3px 3px 0 rgba(26,20,36,.3)}
+  .read h2 span{font-size:.75em; letter-spacing:1.5px; opacity:.9; margin-left:6px}
+
+  /* scoreboard: controls + players on a translucent dusk strip, so it sits in the sky */
+  .scoreboard{background:rgba(46,28,52,.5); border:1.5px solid rgba(255,236,242,.35); border-radius:12px; padding:10px 16px; margin:0 0 18px;
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); color:var(--on-sky);
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px 18px}
+  .board-wrap{margin:0 auto}                     /* max-width set in JS so the whole board fits on screen */
+  .compare header, .compare .cards{display:none}
+  .compare .page{padding:0}
+
+  .controls{display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:14px; font-size:18px}
+  .btn{font-family:"Cinzel",serif; font-weight:700; font-size:15px; letter-spacing:1px; background:var(--emerald); color:var(--paper);
+       border:2px solid var(--ink); border-radius:6px; padding:8px 18px; cursor:pointer; box-shadow:3px 3px 0 rgba(26,20,36,.25)}
+  .btn.ghost{background:var(--paper); color:var(--ink)}
+  .players{display:flex; flex-wrap:wrap; justify-content:center; gap:8px; font-size:17px}
+  .chip{display:inline-flex; align-items:center; gap:6px; border:1.5px solid rgba(255,236,242,.5); border-radius:999px; padding:3px 4px 3px 10px;
+    background:rgba(255,244,242,.1); color:var(--on-sky)}
+  .chip.on{background:var(--pc); color:var(--ink); font-weight:700; border-color:var(--ink); box-shadow:0 0 0 2px var(--on-sky)}
+  .chip b{font:700 13px "Cinzel",serif; min-width:28px; height:24px; padding:0 6px; border-radius:999px; background:var(--on-sky); color:var(--ink); display:grid; place-items:center}
+  .dot{display:inline-block; width:12px; height:12px; border-radius:50%; border:1.5px solid var(--ink); margin-right:6px}
+  .warning{background:#B3261E; color:#fff; font-weight:700; font-size:18px; padding:12px 16px; border-radius:6px; margin-bottom:12px}
+  .modal{position:fixed; inset:0; background:rgba(26,20,36,.5); display:flex; align-items:center; justify-content:center; padding:16px; z-index:10}
+  .modal .card{max-width:440px; width:100%; cursor:default; border:2px solid var(--ink); box-shadow:4px 4px 0 rgba(26,20,36,.25); padding:18px 20px}
+  .modal h3{font-size:24px}
+  .modal .challenge{border:1.5px dashed var(--ink); border-radius:6px; padding:8px 10px; margin-top:10px}
+  .modal .buttons{display:flex; gap:10px; margin-top:14px}
+  /* how-to-play: fluted frame + dusk sky header, like the board */
+  .rules .card{max-width:680px; max-height:calc(100vh - 32px); overflow:auto; padding:0; border-radius:0;
+    border:14px solid transparent; border-image:repeating-linear-gradient(90deg, var(--paper) 0 5px, rgba(62,38,56,.4) 5px 7.5px, var(--paper) 7.5px 12px) 14;
+    box-shadow:0 0 0 3px var(--ink), 9px 9px 0 3px rgba(26,20,36,.35)}
+  .r-head{position:relative; height:200px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-bottom:3px solid var(--ink); overflow:hidden}
+  .r-head svg{position:absolute; inset:0; width:100%; height:100%}
+  .r-head .kind,.r-head h2{position:relative; color:#FFF4F2; text-shadow:0 2px 0 var(--ink), 0 0 12px rgba(26,20,36,.6)}
+  .r-head .kind{font-size:14px; letter-spacing:4px}
+  .r-head h2{font-family:"Cinzel",serif; font-weight:700; font-size:clamp(30px,6vw,46px); letter-spacing:2px; margin:2px 0 18px; text-align:center}
+  .r-body{padding:6px 24px 22px}
+  .rules h4{font-family:"Cinzel",serif; font-size:16px; letter-spacing:3px; color:var(--emerald); margin:18px 0 10px; text-align:center}
+  .cast{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:10px}
+  .cast .who{display:flex; align-items:center; gap:12px; border:2px solid var(--ink); border-radius:8px; padding:8px 12px; box-shadow:3px 3px 0 rgba(26,20,36,.2)}
+  .cast svg{width:30px; height:44px; flex:none}
+  .cast b{display:block; font-family:"Cinzel",serif; font-size:15px; color:var(--ink)}
+  .cast i{display:block; font-size:17px; line-height:1.25; color:var(--ink-soft)}
+  .rules ol{list-style:none; counter-reset:r; padding:0; margin:0; display:flex; flex-direction:column; gap:9px}
+  .rules li{counter-increment:r; display:flex; gap:12px; align-items:flex-start; font-size:18px; line-height:1.35; color:var(--ink)}
+  .rules li::before{content:counter(r); flex:none; width:30px; height:30px; border-radius:50%; background:#FFF4F2; border:2px solid var(--ink);
+    font:700 14px "Cinzel",serif; display:grid; place-items:center}
+  .rules .note{text-align:center; font-style:italic; margin-top:14px}
+  .rules .btn{font-size:18px; padding:10px 28px}
+  .pic{float:right; width:84px; height:96px; margin:-4px -4px 4px 8px}
+  .modal .pic{width:120px; height:136px}
+  .pawn{cursor:grab; touch-action:none}
+  .pawn.dragging{cursor:grabbing}
+  /* design mode: a parchment panel on the right; the board stays visible beside it on wide screens */
+  .design-link{text-align:center; margin:14px 0 0}
+  .design-link a{font:700 13px "Cinzel",serif; letter-spacing:2px; color:var(--on-sky); opacity:.8; text-decoration:none}
+  .design-link a:hover{opacity:1; text-decoration:underline}
+  .designing .design-link{display:none}
+  .designer{position:fixed; top:0; right:0; bottom:0; width:min(460px,100%); z-index:20; overflow:auto; background:var(--paper);
+    border-left:3px solid var(--ink); box-shadow:-6px 0 0 rgba(26,20,36,.25); padding:0 18px 40px}
+  @media (min-width:1000px){ .designing .page{margin:0 460px 0 0} }
+  .d-head{position:sticky; top:0; z-index:1; background:var(--paper); padding:14px 0 12px; border-bottom:2px solid var(--ink);
+    display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between}
+  .d-head .buttons{display:flex; gap:8px}
+  .designer h4{font-family:"Cinzel",serif; font-size:15px; letter-spacing:3px; color:var(--emerald); margin:24px 0 6px}
+  .designer label{display:block; font:600 11px "Cinzel",serif; letter-spacing:1.5px; color:var(--ink-soft); margin-top:8px}
+  .designer input,.designer select,.designer textarea{display:block; width:100%; margin-top:3px; padding:5px 8px; font:17px "Cormorant Garamond",Georgia,serif;
+    color:var(--ink); background:#fff; border:1.5px solid var(--ink); border-radius:6px}
+  .designer textarea{resize:vertical}
+  .d-row{display:grid; grid-template-columns:1fr 1fr; gap:0 10px}
+  .d-row3{display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:0 8px}
+  .d-item{position:relative; border:2px solid var(--ink); border-radius:8px; padding:4px 12px 12px; margin-top:10px; box-shadow:3px 3px 0 rgba(26,20,36,.2)}
+  .d-x{position:absolute; top:2px; right:6px; background:none; border:0; font-size:22px; line-height:1; cursor:pointer; color:var(--ink-soft)}
+  .btn.small{font-size:13px; padding:5px 12px; margin-top:10px}
+  [hidden]{display:none !important}
+  @media print{ .scoreboard,.read,.warning,.modal,.designer,.design-link{display:none !important} body{background:#fff} .board-wrap{filter:none} }
+</style>
+<div class="page">
+  <header class="banner">
+    <svg id="h-art" viewBox="0 0 1180 230" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+    <h1 id="title">Snakes &amp; Ladders</h1>
+    <p class="sub" id="sub"></p>
+  </header>
+  <div class="warning" id="warning" hidden></div>
+  <section class="scoreboard">
+    <div class="controls">
+      <button class="btn" id="roll">Roll</button>
+      <button class="btn ghost" id="how">How to play</button>
+      <span id="status">Drag a pawn to move it, or roll.</span>
+    </div>
+    <div class="players" id="players"></div>
+  </section>
+  <div class="board-wrap" id="wrap">
+    <svg id="board" role="img" aria-label="Snakes and ladders board"></svg>
+    <div class="pop" id="pop"></div>
+  </div>
+  <p class="design-link"><a href="#design">✎ Design your own game</a></p>
+  <section class="read" id="read" hidden>
+    <h2><b>READ SO FAR <span id="read-count"></span></b></h2>
+    <div class="cards" id="cards"></div>
+  </section>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="card">
+    <div id="m-pic"></div>
+    <div class="kind" id="m-kind"></div>
+    <h3 id="m-title"></h3>
+    <p id="m-note"></p>
+    <div class="route" id="m-persona"></div>
+    <div class="challenge" id="m-challenge"><div class="kind">ESCAPE CHALLENGE</div><p id="m-challenge-text"></p></div>
+    <div class="buttons" id="m-buttons"></div>
+  </div>
+</div>
+
+<aside class="designer" id="designer" hidden>
+  <div class="d-head">
+    <div class="kind">DESIGN MODE</div>
+    <div class="buttons"><button class="btn" id="d-save">Download game</button><button class="btn ghost" id="d-close">Play</button></div>
+  </div>
+  <div id="d-form"></div>
+</aside>
+
+<div class="modal rules" id="rules" hidden>
+  <div class="card">
+    <div class="r-head">
+      <svg id="r-art" viewBox="0 0 680 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+      <div class="kind">HOW TO PLAY</div>
+      <h2 id="r-title"></h2>
+    </div>
+    <div class="r-body">
+      <h4>THE CAST</h4>
+      <div class="cast" id="r-cast"></div>
+      <p class="note">The colours are just for looks: anyone can climb any ladder and slide down any snake.</p>
+      <h4>THE RULES</h4>
+      <ol>
+        <li><span>Play alone or in a team. Pick a chit: that's your personality, and your pawn.</span></li>
+        <li><span>Roll a die, or press Roll, and move. Drag your pawn on screen to match.</span></li>
+        <li><span>Foot of a ladder: read the card out loud and climb.</span></li>
+        <li><span>Head of a snake: read the card, then try the escape challenge. Pass and you stay put. Fail and you slide.</span></li>
+        <li id="r-judge"><span><span id="r-judge-name"></span> has the final say on every challenge.</span></li>
+        <li><span>First to square <b id="r-last"></b> wins. Keep going if there are cards left to read.</span></li>
+      </ol>
+      <p class="note">Click any snake or ladder to read its card.</p>
+      <div class="buttons" style="justify-content:center"><button class="btn" id="r-close">Let's play</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SOURCE = document.documentElement.outerHTML;   // this page as loaded, before any drawing: design mode saves copies of it
+const DATA = /*DATA*/{"title": "Snakes & Ladders", "subtitle": "Wonderland edition", "theme": "blush", "judge": "The Queen of Hearts", "prize": "Jam tarts all round. The Knave swears he hasn't touched them.", "prizePicture": "cake", "flags": [], "seed": 7, "players": [{"name": "The Curious One", "player": "", "vibe": "Sees a rabbit with a pocket watch, follows it. No questions asked."}, {"name": "The Size-Changer", "player": "", "vibe": "Nine feet tall by lunch, three inches by tea."}, {"name": "The Tea Party Guest", "player": "", "vibe": "Never misses a party, even one that never ends."}, {"name": "The Rule Questioner", "player": "", "vibe": "Has read the rules. Thinks they're nonsense. Says so."}], "ladders": [{"caption": "Follows the White Rabbit", "text": "A rabbit ran past checking a pocket watch. Obviously she followed it.", "challenge": "", "persona": "The Curious One", "size": "big", "picture": ""}, {"caption": "Eats the cake", "text": "The little cake said EAT ME, so she did, and shot up to nine feet tall.", "challenge": "", "persona": "The Size-Changer", "size": "big", "picture": "cake"}, {"caption": "Finds the golden key", "text": "Sitting on a glass table, as if someone had left it there just for her.", "challenge": "", "persona": "The Curious One", "size": "medium", "picture": ""}, {"caption": "Gets a seat at the tea party", "text": "\"No room!\" they cried. There was plenty of room. She sat down anyway.", "challenge": "", "persona": "The Tea Party Guest", "size": "medium", "picture": ""}, {"caption": "Wins the Caucus race", "text": "Everyone ran in circles, everyone won, and everyone got a prize.", "challenge": "", "persona": "Everyone", "size": "medium", "picture": ""}, {"caption": "Answers the Caterpillar", "text": "\"Who are YOU?\" She told him, eventually, after some thought.", "challenge": "", "persona": "The Rule Questioner", "size": "small", "picture": ""}, {"caption": "Picks the right side of the mushroom", "text": "One side makes you taller, the other makes you shorter. She worked out which was which.", "challenge": "", "persona": "The Size-Changer", "size": "medium", "picture": ""}, {"caption": "Befriends the Cheshire Cat", "text": "He kept vanishing, but the grin stayed, and so did the friendship.", "challenge": "", "persona": "The Curious One", "size": "small", "picture": ""}, {"caption": "Learns the Lobster Quadrille", "text": "The Mock Turtle taught her every step. She still has the moves.", "challenge": "", "persona": "The Tea Party Guest", "size": "medium", "picture": ""}, {"caption": "Stands up in court", "text": "\"Stuff and nonsense!\" she told the Queen to her face, and grew to full size while saying it.", "challenge": "", "persona": "The Rule Questioner", "size": "big", "picture": ""}, {"caption": "Wakes up under the tree", "text": "It was all a dream, and she remembered every bit of it.", "challenge": "", "persona": "Everyone", "size": "medium", "picture": ""}], "snakes": [{"caption": "Down the rabbit hole", "text": "Down, down, down. It took so long she had time to wonder whether cats eat bats.", "challenge": "Name five things you'd grab off the shelves on the way down, in ten seconds.", "persona": "The Curious One", "size": "big", "picture": ""}, {"caption": "Drinks the shrinking potion", "text": "DRINK ME, said the bottle. Now she's ten inches tall and the key is still on the table.", "challenge": "Cross the room as small as you can make yourself. The Queen decides if you were small enough.", "persona": "The Size-Changer", "size": "big", "picture": ""}, {"caption": "A pool of tears", "text": "She cried while she was nine feet tall. Now she's swimming in it.", "challenge": "Cry convincingly for five seconds without laughing.", "persona": "The Size-Changer", "size": "medium", "picture": ""}, {"caption": "The riddle with no answer", "text": "The Hatter asked her a riddle, then admitted he didn't know the answer either.", "challenge": "Why is a raven like a writing desk? Give an answer. The Queen decides if it's good enough.", "persona": "The Tea Party Guest", "size": "medium", "picture": ""}, {"caption": "Clean cup, move down", "text": "Every time she settled in, everyone had to move one seat along. The March Hare spilt the milk.", "challenge": "Pour an imaginary cup of tea for everyone without spilling a drop. The Queen watches closely.", "persona": "The Tea Party Guest", "size": "small", "picture": ""}, {"caption": "Painting the roses red", "text": "The gardeners planted white roses by mistake, and she got roped into the cover-up.", "challenge": "Point at three red things in the room in five seconds.", "persona": "Everyone", "size": "medium", "picture": ""}, {"caption": "Croquet with a flamingo", "text": "The mallet was a flamingo, the ball was a hedgehog, and neither would cooperate.", "challenge": "Stand on one leg like a flamingo for fifteen seconds.", "persona": "The Rule Questioner", "size": "medium", "picture": ""}, {"caption": "Off with her head!", "text": "She disagreed with the Queen. The Queen did not take it well.", "challenge": "Bow to the Queen and pay her a compliment. If she smiles, you escape.", "persona": "The Rule Questioner", "size": "big", "picture": ""}, {"caption": "Asks the Cat for directions", "text": "\"That depends a good deal on where you want to get to.\" She had no idea.", "challenge": "Give directions to the kitchen using only riddles. The Queen decides if they make sense.", "persona": "The Curious One", "size": "medium", "picture": ""}, {"caption": "Gets the poem wrong", "text": "She tried to recite the one about the busy bee, and out came a crocodile.", "challenge": "Recite a nursery rhyme with one word changed in every line.", "persona": "Everyone", "size": "small", "picture": ""}, {"caption": "Stuck in the Rabbit's house", "text": "Grew too big indoors. One arm out of the window, one foot up the chimney.", "challenge": "Make yourself as big as you can without leaving your chair. The Queen judges.", "persona": "The Size-Changer", "size": "small", "picture": ""}]}/*END*/;
+
+// ---- layout: place ladders and snakes on the board (same data + seed = same board)
+// Pure functions, no DOM: tests/layout.test.mjs loads this block (down to the end-layout marker) and tests it.
+function rand(seed) {
+  seed = Math.abs(Math.floor(seed)) % 2147483647 || 1;     // Lehmer RNG needs a seed in [1, 2^31-2]
+  return () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+}
+
+function makeLayout(data, seed) {
+  const all = [...data.ladders.map((x, i) => ({ ...x, type: "L", id: "L" + (i + 1) })),
+               ...data.snakes.map((x, i) => ({ ...x, type: "S", id: "S" + (i + 1) }))];
+  const N = Math.min(100, Math.max(60, Math.ceil(all.length * 3 / 10) * 10));   // ~1 item per 3 squares, 60–100
+  const lengths = { small: [5, 9], medium: [10, 16], big: [17, 26] };
+  const r = rand(seed);
+  const used = new Set([1, N]);
+  const perRow = {};
+  const items = [];
+  const dropped = [];
+  for (const it of all) {
+    const before = items.length;
+    const [lo, hi] = lengths[it.size] || lengths.medium;
+    for (let tries = 0; tries < 2000; tries++) {
+      const len = lo + Math.floor(r() * (hi - lo + 1));
+      const from = it.type === "L" ? 2 + Math.floor(r() * (N - 2 - len)) : len + 2 + Math.floor(r() * (N - 3 - len));
+      const to = it.type === "L" ? from + len : from - len;
+      const row = Math.floor((from - 1) / 10);
+      if (used.has(from) || used.has(to) || to >= N || to < 2) continue;
+      if ((perRow[row] || 0) >= 4) continue;
+      if (row === Math.floor((to - 1) / 10)) continue; // no flat snakes/ladders inside one row
+      used.add(from); used.add(to); perRow[row] = (perRow[row] || 0) + 1;
+      items.push({ ...it, from, to });
+      break;
+    }
+    if (items.length === before) dropped.push(it);
+  }
+  return { N, rows: N / 10, items, dropped };
+}
+
+// try 200 layouts, keep the one with fewest crossing lines (dropped items count as very bad)
+function crossings(items) {
+  const p = n => { const row = Math.floor((n - 1) / 10), c = (n - 1) % 10; return [row % 2 ? 9 - c : c, row]; };
+  const side = (a, b, c) => Math.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]));
+  let count = 0;
+  for (let i = 0; i < items.length; i++)
+    for (let j = i + 1; j < items.length; j++) {
+      const a = p(items[i].from), b = p(items[i].to), c = p(items[j].from), d = p(items[j].to);
+      if (side(a, b, c) * side(a, b, d) < 0 && side(c, d, a) * side(c, d, b) < 0) count++;
+    }
+  return count;
+}
+
+function bestLayout(data, tries = 200) {
+  let best = null;
+  for (let k = 1; k <= tries; k++) {
+    const l = makeLayout(data, data.seed * 1000 + k);
+    l.score = l.dropped.length * 1000 + crossings(l.items);
+    if (!best || l.score < best.score) best = l;
+  }
+  return best;
+}
+// ---- end layout
+
+
+/* ============================ THEMES ============================
+   Pick with ?theme=dusk (default) | twilight | storybook | poster | blush
+   (or set window.THEME before this script).                       */
+const THEMES = {
+  twilight: { name:"Twilight (original)",
+    ink:"#1A1424", inkW:2.6, page:"#EFE6D2", paper:"#F3EBD8", card:"#F8F2E4", inkSoft:"#4A4258", accent:"#2F5D50",
+    sky:["#2B3263","#3B3E74","#55508A","#7F6A9A","#B08BA2"], star:"#F6E9C6", starCount:70, sparkle:"#F6E9C6",
+    moonStyle:"moon", moon:"#F2E2B3", crater:"#E3CF98", cloud:"#E9DCEB",
+    islandBase:"#6E5A86", islandTop:"#5E9A84", gate:"#F4E9D0", door:"#3B3E74", tree:"#4F8A72",
+    hills:["#5E8C8A","#C7A365","#8B5F7C","#3E6B5C"], hatch:.45, road:"#EAD7B4",
+    pond:"#7FA8C9", ripple:"#DCE9F2", pad:"#4F8A72", petals:["#F2C4CF","#EDA9BC","#F7D6DE"], vein:"#C77F95", tip:"#D9849C", pod:"#C9C66A",
+    tileTint:"rgba(255,248,232,.07)", grid:"rgba(251,243,226,.32)", numFill:"#FBF3E2", numHalo:"#1A1424", badge:"#F4E9D0", plaque:"#F4E9D0",
+    wood:"#C4955A", woodGrain:"#9A6E3C", gold:"#E2B65C", goldGrain:"#B8913A",
+    snakes:{ emerald:{dark:"#2A564A",mid:"#3D7663",sheen:"#8CC0A9",mark:"#1D3F35",eye:"#E2C27A"},
+             plum:{dark:"#5B3557",mid:"#7C4E74",sheen:"#C79BBE",mark:"#40233E",eye:"#E2C27A"},
+             ochre:{dark:"#9A6B2E",mid:"#C49048",sheen:"#EBC88E",mark:"#6E4A1E",eye:"#2A1E10"} } },
+
+  dusk: { name:"Rosé dusk — twilight meets blush",
+    ink:"#3E2638", inkW:2.4, page:"#F5E8E6", paper:"#F6E4E6", card:"#FFF6F4", inkSoft:"#6E5266", accent:"#A85A7E",
+    sky:["#5A4170","#74547F","#946A8E","#B9879E","#D8A9B4"], star:"#FFF1E6", starCount:45, sparkle:"#FFF1E6",
+    hearts:"#F2B6C8", heartCount:16,
+    moonStyle:"disco", moon:"#EADCE6", crater:"#D9C3D2", cloud:"#F3E2EC",
+    facets:["#FFFFFF","#F1D9E4","#DCCFE6","#F7EBF0","#E6C3D3","#CDBBD8"], facetLine:"rgba(62,38,56,.3)",
+    islandBase:"#8E6E9E", islandTop:"#8DB5A2", gate:"#FBEFEA", door:"#74547F", tree:"#7FA898",
+    hills:["#9C8AB8","#E3B79F","#C98AA2","#6E9A8C"], hatch:.32, road:"#F1DCC4",
+    pond:"#9DB8D8", ripple:"#EEF4FA", pad:"#7FA898", petals:["#FBE3EA","#F3BFD0","#FFF2F5"], vein:"#D893AB", tip:"#E59AB4", pod:"#E5C88A",
+    tileTint:"rgba(255,240,245,.07)", grid:"rgba(255,238,244,.3)", numFill:"#FFF4F2", numHalo:"#3E2638", badge:"#FFF4F2", plaque:"#FFF4F2",
+    wood:"#E2C08A", woodGrain:"#B8935A", gold:"#E7A98F", goldGrain:"#B97A64",
+    snakes:{ emerald:{dark:"#A85A7E",mid:"#C97898",sheen:"#F2C3D5",mark:"#8A4565",eye:"#FFF4F2"},
+             plum:{dark:"#76609E",mid:"#9A84C2",sheen:"#D8CCEE",mark:"#5D4A82",eye:"#FFF4F2"},
+             ochre:{dark:"#B08A4E",mid:"#D4B074",sheen:"#F3E1BC",mark:"#8E6C34",eye:"#3E2638"} } },
+
+  storybook: { name:"Vintage storybook — bright daylight",
+    ink:"#22180F", inkW:2.6, page:"#F3E7CC", paper:"#F6EBD0", card:"#FBF3DF", inkSoft:"#5A4632", accent:"#C8372D",
+    sky:["#5AAAD6","#7DBDE0","#A3D1E6","#CBE6EA","#F4E4B8"], star:"#FFFFFF", starCount:0, sparkle:"#FFF6D6",
+    moonStyle:"sun", moon:"#F6C343", crater:"#F19A2E", cloud:"#FFFFFF",
+    islandBase:"#C8372D", islandTop:"#5FA052", gate:"#FBF3DF", door:"#2F6FA8", tree:"#3D8B4A",
+    hills:["#5FA052","#F2B134","#E2553A","#2E7D6B"], hatch:.4, road:"#F6E3B8",
+    pond:"#4FA3D1", ripple:"#D7EEF8", pad:"#3D8B4A", petals:["#F7B8C8","#F28FAA","#FBD3DE"], vein:"#D1607F", tip:"#E0577D", pod:"#E8C548",
+    tileTint:"rgba(255,255,255,.10)", grid:"rgba(34,24,15,.26)", numFill:"#22180F", numHalo:"#FBF3DF", badge:"#FBF3DF", plaque:"#FBF3DF",
+    wood:"#C98A4B", woodGrain:"#8E5A2B", gold:"#F2B134", goldGrain:"#C2851C",
+    snakes:{ emerald:{dark:"#1F7A3E",mid:"#34A853",sheen:"#9BE0A6",mark:"#145A2C",eye:"#FFD54A"},
+             plum:{dark:"#A3242B",mid:"#D8383E",sheen:"#F59A9C",mark:"#6E1418",eye:"#FFD54A"},
+             ochre:{dark:"#C9861B",mid:"#F2B134",sheen:"#FBDD8C",mark:"#8A5A0C",eye:"#22180F"} } },
+
+  poster: { name:"Retro travel poster — bright sunset",
+    ink:"#1E1A2B", inkW:2.6, page:"#F2E4CC", paper:"#F4E6CB", card:"#FAF0DE", inkSoft:"#4D4560", accent:"#E0573B",
+    sky:["#16807F","#36A3A0","#8FCDB8","#F7C873","#F59A6A"], star:"#FFF3D6", starCount:22, sparkle:"#FFF3D6",
+    moonStyle:"sunset", moon:"#F4553B", crater:"#F7C873", cloud:"#FCEBD3",
+    islandBase:"#7A3B69", islandTop:"#2E8B57", gate:"#FAF0DE", door:"#16807F", tree:"#1E6B4F",
+    hills:["#E8577F","#F49B2B","#1B7F7A","#2D4F3E"], hatch:.4, road:"#F8E2B6",
+    pond:"#2C9AB7", ripple:"#CDEFF5", pad:"#1E6B4F", petals:["#FFC2D1","#FF8FAE","#FFDCE5"], vein:"#D8507A", tip:"#E43F6F", pod:"#F2C14E",
+    tileTint:"rgba(255,255,255,.06)", grid:"rgba(255,245,225,.4)", numFill:"#FFF4DE", numHalo:"#1E1A2B", badge:"#FAF0DE", plaque:"#FAF0DE",
+    wood:"#D49A5A", woodGrain:"#8E5A2B", gold:"#F2C14E", goldGrain:"#C2851C",
+    snakes:{ emerald:{dark:"#0F6E66",mid:"#1A9C8F",sheen:"#7FDCCF",mark:"#0A4A45",eye:"#FFD166"},
+             plum:{dark:"#8E2457",mid:"#C2367A",sheen:"#F39BC2",mark:"#5E1239",eye:"#FFD166"},
+             ochre:{dark:"#C9631B",mid:"#F28A2E",sheen:"#FBC48A",mark:"#8A3F0C",eye:"#1E1A2B"} } },
+
+  blush: { name:"Blush & champagne",
+    ink:"#5A3A4C", inkW:2.1, page:"#FBEFEF", paper:"#FBE6EB", card:"#FFF7F6", inkSoft:"#8A6677", accent:"#C9789A",
+    sky:["#F2C1D0","#F6D0DB","#F9DEE3","#FBEAE6","#FCF3EB"], star:"#E7A98F", starCount:0, hearts:"#EBA0B9", sparkle:"#FFFFFF",
+    moonStyle:"disco", moon:"#F1E6EE", crater:"#E8D3DC", cloud:"#FFFFFF",
+    islandBase:"#D9B8E2", islandTop:"#BFD9C6", gate:"#FFF7F6", door:"#F2C1D0", tree:"#A9CDB4",
+    hills:["#D9C3EA","#F6CDB6","#EBA9C0","#BCD7C2"], hatch:.22, road:"#F8E8CC",
+    pond:"#C9DDF0", ripple:"#FFFFFF", pad:"#A9CDB4", petals:["#FFFFFF","#F9D3DF","#FFF0F4"], vein:"#E3A3B9", tip:"#EFA0B9", pod:"#E8CF8A",
+    tileTint:"rgba(255,255,255,.12)", grid:"rgba(90,58,76,.2)", numFill:"#5A3A4C", numHalo:"#FFF7F6", badge:"#FFF7F6", plaque:"#FFF7F6",
+    wood:"#E8C98A", woodGrain:"#C9A45E", gold:"#E7A98F", goldGrain:"#C47F68",
+    snakes:{ emerald:{dark:"#C9789A",mid:"#E7A0BC",sheen:"#FBDCE8",mark:"#B05D80",eye:"#FFFFFF"},
+             plum:{dark:"#9C82C4",mid:"#BFA6E0",sheen:"#EBE1F7",mark:"#7F66A8",eye:"#FFFFFF"},
+             ochre:{dark:"#C9A464",mid:"#E5C78C",sheen:"#FAEED3",mark:"#A8843F",eye:"#5A3A4C"} } }
+};
+let T;                                         // picked in build(): ?theme= in the URL, else DATA.theme, else dusk
+
+/* ============================ RENDERER ============================ */
+const NS = "http://www.w3.org/2000/svg";
+let INK;
+const S = 100;
+let SNAKE_PALETTES;
+
+function el(tag, attrs = {}, parent){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function rng(seed){ return () => (seed = (seed * 16807) % 2147483647, (seed - 1) / 2147483646); }
+function cubic(p0,c1,c2,p3,n){ const r=[]; for(let i=0;i<=n;i++){ const t=i/n,u=1-t;
+  r.push({ x:u*u*u*p0.x+3*u*u*t*c1.x+3*u*t*t*c2.x+t*t*t*p3.x, y:u*u*u*p0.y+3*u*u*t*c1.y+3*u*t*t*c2.y+t*t*t*p3.y }); } return r; }
+function resample(raw, step){
+  const out=[raw[0]]; let acc=0;
+  for(let i=1;i<raw.length;i++){ let a=raw[i-1], b=raw[i], d=Math.hypot(b.x-a.x,b.y-a.y);
+    while(acc+d>=step){ const r=(step-acc)/d; a={x:a.x+(b.x-a.x)*r, y:a.y+(b.y-a.y)*r}; out.push(a); d=Math.hypot(b.x-a.x,b.y-a.y); acc=0; }
+    acc+=d; }
+  return out;
+}
+
+function render(board){
+  const { rows, cols } = board, W = cols*S, H = rows*S, PAD = 40;
+  const svg = document.getElementById("board");
+  svg.innerHTML = "";
+  const SIDE = 120;                                                   // room for the flagpoles
+  svg.setAttribute("viewBox", `${-PAD-SIDE} ${-PAD-26} ${W+PAD*2+SIDE*2} ${H+PAD*2+50}`);
+
+  const tile = n => { const i=n-1, r=Math.floor(i/cols), k=i%cols, c = r%2===0 ? k : cols-1-k;
+    const x0=c*S, y0=(rows-1-r)*S; return { x0, y0, cx:x0+S/2, cy:y0+S/2, r, c }; };
+
+  const defs = el("defs", {}, svg);
+  defs.innerHTML = `
+    <filter id="hand" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="5"/>
+    </filter>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="9"/>
+      <feColorMatrix values="0 0 0 0 0.98  0 0 0 0 0.95  0 0 0 0 0.88  0 0 0 0.07 0"/>
+    </filter>
+    <pattern id="flutes" width="12" height="12" patternUnits="userSpaceOnUse">
+      <rect width="12" height="12" fill="${T.paper}"/>
+      <path d="M6 1.5v9" stroke="${INK}" stroke-opacity=".35" stroke-width="2.2" stroke-linecap="round"/>
+    </pattern>
+    <clipPath id="clip"><rect x="0" y="0" width="${W}" height="${H}" rx="10"/></clipPath>`;
+
+  /* frame */
+  el("rect", { x:-PAD+4, y:-PAD+4, width:W+PAD*2-8, height:H+PAD*2-8, rx:18, fill:"url(#flutes)", stroke:INK, "stroke-width":3 }, svg);
+  el("rect", { x:-12, y:-12, width:W+24, height:H+24, rx:14, fill:T.paper, stroke:INK, "stroke-width":1.6 }, svg);
+
+  /* scene */
+  const scene = el("g", { "clip-path":"url(#clip)" }, svg);
+  const art = el("g", { filter:"url(#hand)" }, scene);
+  drawDreamscape(art, W, H, {
+    segs: board.items.map(it => { const a=tile(it.from), b=tile(it.to); return [{x:a.cx,y:a.cy},{x:b.cx,y:b.cy}]; }),
+    points: []                                                          // not pawns: they move
+  });
+  el("rect", { x:0, y:0, width:W, height:H, filter:"url(#grain)" }, scene);
+  el("rect", { x:0, y:0, width:W, height:H, fill:T.paper, opacity:.38 }, scene);   // soften the scenery so the pieces stand out
+
+  /* tiles */
+  const special = new Set(board.items.flatMap(it => [it.from, it.to]).concat([1, rows*cols]));
+  const badge = {}; board.items.forEach(it => { if (it.badge) badge[it.from] = it.badge; });
+  const tiles = el("g", {}, svg);
+  const nums = el("g", { "pointer-events":"none" });          // appended last so numbers stay readable
+  for (let n=1; n<=rows*cols; n++){
+    const t = tile(n);
+    el("rect", { x:t.x0, y:t.y0, width:S, height:S, fill:(t.r+t.c)%2 ? T.tileTint : "rgba(0,0,0,0)",
+      stroke:T.grid, "stroke-width":1.2 }, tiles);
+    const sp = special.has(n);
+    if (sp) el("circle", { cx:t.x0+19, cy:t.y0+19, r:14, fill:badge[n] || T.badge, stroke:INK, "stroke-width":2 }, nums);
+    const tx = el("text", { x:t.x0+19, y:t.y0+24.5, "text-anchor":"middle", "font-family":"Cinzel, serif", "font-weight":700,
+      "font-size":14, fill: sp ? INK : T.numFill, stroke: sp ? "none" : T.numHalo, "stroke-width": sp ? 0 : 3, "paint-order":"stroke" }, nums);
+    tx.textContent = n;
+  }
+  el("rect", { x:0, y:0, width:W, height:H, rx:10, fill:"none", stroke:INK, "stroke-width":3 }, svg);
+
+  /* ladders, then snakes on top */
+  const layer = el("g", {}, svg), groups = [];
+  board.items.forEach((it,i) => {
+    const g = el("g", { class:"item" }, layer); groups[i] = g;
+    if (it.type === "ladder") drawLadder(g, tile(it.from), tile(it.to), it.highlight, it.pal);
+  });
+  board.items.forEach((it,i) => {
+    if (it.type !== "snake") return;
+    layer.appendChild(groups[i]);
+    drawSnake(groups[i], tile(it.from), tile(it.to), it.pose || "racer", it.pal || SNAKE_PALETTES[it.color] || SNAKE_PALETTES.emerald, i);
+  });
+
+  { const t = tile(rows*cols), pic = PICTURES[DATA.prizePicture || "cake"];   // prize on the last square ("none" = no picture)
+    if (pic) pic(el("g", { class:"prize", "pointer-events":"none", transform:`translate(${t.cx + 8} ${t.cy + 6})` }, svg)); }
+
+  /* optional flags beside the board, not on it: DATA.flags = [left, right], each a key of FLAGS */
+  const [fl, fr] = DATA.flags || [];
+  if (FLAGS[fl]) drawSideFlag(svg, -PAD-92, -PAD-6, H+PAD-4, fl, 1);
+  if (FLAGS[fr]) drawSideFlag(svg, W+PAD+92, -PAD-6, H+PAD-4, fr, -1);
+
+  /* pawns */
+  el("g", { id:"pawns" }, svg);
+  TILE = tile;
+  drawPawns(board);
+
+  svg.appendChild(nums);
+  wire(board, groups);
+}
+
+/* ------------------------- the dreamscape ------------------------- */
+function drawDreamscape(g, W, H, avoid = { segs:[], points:[] }){
+  const r = rng(23), ink = { stroke:INK, "stroke-width":T.inkW, "stroke-linejoin":"round" };
+
+  /* twilight sky in flat bands */
+  [[T.sky[0],0],[T.sky[1],H*.17],[T.sky[2],H*.3],[T.sky[3],H*.42],[T.sky[4],H*.52]]
+    .forEach(([c,y]) => el("rect", { x:0, y, width:W, height:H-y, fill:c }, g));
+
+  /* stars */
+  for (let i=0;i<T.starCount;i++) el("circle", { cx:r()*W, cy:r()*H*.48, r:.8+r()*1.6, fill:T.star, opacity:.45+r()*.55 }, g);
+  if (T.hearts) for (let i=0;i<(T.heartCount||34);i++){ const x=r()*W, y=r()*H*.5, s=.5+r()*.6;
+    el("path", { d:`M${x} ${y+5*s} C${x-9*s} ${y-1*s} ${x-6*s} ${y-8*s} ${x} ${y-3*s} C${x+6*s} ${y-8*s} ${x+9*s} ${y-1*s} ${x} ${y+5*s}Z`, fill:T.hearts, opacity:.55+r()*.4 }, g); }
+  [[60,40],[470,150],[610,40],[300,60],[960,230]].forEach(([x,y]) =>
+    el("path", { d:`M${x} ${y-9} L${x+2.5} ${y-2.5} L${x+9} ${y} L${x+2.5} ${y+2.5} L${x} ${y+9} L${x-2.5} ${y+2.5} L${x-9} ${y} L${x-2.5} ${y-2.5}Z`,
+      fill:T.sparkle, stroke:INK, "stroke-width":1.4 }, g));
+
+  /* moon / sun / disco ball */
+  const mx=W*.82, my=H*.19;
+  if (T.moonStyle==="sun"){
+    for (let k=0;k<16;k++){ const a=k/16*Math.PI*2; el("path", { d:`M${mx+Math.cos(a-.09)*74} ${my+Math.sin(a-.09)*74} L${mx+Math.cos(a)*102} ${my+Math.sin(a)*102} L${mx+Math.cos(a+.09)*74} ${my+Math.sin(a+.09)*74}Z`, fill:T.crater, ...ink, "stroke-width":1.6 }, g); }
+    el("circle", { cx:mx, cy:my, r:66, fill:T.moon, ...ink }, g);
+  } else if (T.moonStyle==="sunset"){
+    el("circle", { cx:mx, cy:my, r:70, fill:T.moon, ...ink }, g);
+    [10,26,40,52].forEach((dy,k) => el("rect", { x:mx-72, y:my+dy, width:144, height:5+k*1.6, fill:T.crater }, g));
+  } else if (T.moonStyle==="disco"){
+    el("line", { x1:mx, y1:-10, x2:mx, y2:my-66, stroke:INK, "stroke-width":2 }, g);
+    const id="discoClip", cp=el("clipPath", { id }, g.ownerSVGElement.querySelector("defs")); el("circle", { cx:mx, cy:my, r:66 }, cp);
+    const dg=el("g", { "clip-path":`url(#${id})` }, g), facets=T.facets||["#FFFFFF","#F4DDE7","#E2D7EA","#F9EEF2","#EBCAD8","#F7F1F4"];
+    for (let y=my-70; y<my+70; y+=13) for (let x=mx-70; x<mx+70; x+=13)
+      el("rect", { x, y, width:13, height:13, fill:facets[Math.floor(r()*facets.length)], stroke:T.facetLine||"rgba(90,58,76,.28)", "stroke-width":.8 }, dg);
+    el("circle", { cx:mx, cy:my, r:66, fill:"none", ...ink }, g);
+    [[mx-30,my-28,10],[mx+22,my+14,7],[mx+46,my-44,6],[mx-60,my+40,6]].forEach(([x,y,s]) =>
+      el("path", { d:`M${x} ${y-s} L${x+s*.25} ${y-s*.25} L${x+s} ${y} L${x+s*.25} ${y+s*.25} L${x} ${y+s} L${x-s*.25} ${y+s*.25} L${x-s} ${y} L${x-s*.25} ${y-s*.25}Z`, fill:"#FFFFFF" }, g));
+  } else {
+    el("circle", { cx:mx, cy:my, r:66, fill:T.moon, ...ink }, g);
+    [[-18,-14,12],[20,16,9],[8,-28,6],[-26,22,7]].forEach(([dx,dy,rr]) =>
+      el("circle", { cx:mx+dx, cy:my+dy, r:rr, fill:T.crater, stroke:INK, "stroke-width":1.2, opacity:.9 }, g));
+  }
+
+  /* inked, scalloped clouds */
+  const cloud = (x,y,s) => el("path", { d:`M${x} ${y} q${8*s} ${-16*s} ${22*s} ${-8*s} q${10*s} ${-18*s} ${30*s} ${-6*s} q${16*s} ${-10*s} ${26*s} ${6*s} q${16*s} 0 ${14*s} ${10*s} Z`,
+    fill:T.cloud, ...ink, "stroke-width":2 }, g);
+  cloud(470,92,1.6); cloud(60,215,1.3); cloud(640,250,1);
+
+  /* floating island with a little arched gate (top-left, near the finish) */
+  const fx=W*.17, fy=H*.17;
+  el("path", { d:`M${fx-70} ${fy} Q${fx} ${fy+95} ${fx+70} ${fy} Z`, fill:T.islandBase, ...ink }, g);
+  [[-30,30],[0,52],[28,34]].forEach(([dx,l]) => el("path", { d:`M${fx+dx} ${fy+l} q4 14 -2 26`, fill:"none", stroke:INK, "stroke-width":1.6 }, g));
+  el("ellipse", { cx:fx, cy:fy, rx:72, ry:14, fill:T.islandTop, ...ink }, g);
+  el("path", { d:`M${fx+22} ${fy-6} v-32 q0 -18 16 -18 q16 0 16 18 v32`, fill:T.gate, ...ink, "stroke-width":2.2 }, g);
+  el("path", { d:`M${fx+30} ${fy-6} v-24 q0 -9 8 -9 q8 0 8 9 v24`, fill:T.door, stroke:INK, "stroke-width":1.6 }, g);
+  el("line", { x1:fx-30, y1:fy-4, x2:fx-30, y2:fy-30, stroke:INK, "stroke-width":2.4 }, g);
+  el("circle", { cx:fx-30, cy:fy-40, r:16, fill:T.tree, ...ink, "stroke-width":2.2 }, g);
+
+
+  /* rolling hills — each inked, with hand hatching */
+  const hill = (base, amp, freq, ph, fill, hatch) => {
+    const yAt = x => base + amp*Math.sin(x/W*Math.PI*2*freq + ph) + amp*.35*Math.sin(x/W*Math.PI*2*freq*2.3 + ph*1.7);
+    let d = `M-20 ${H+30} L-20 ${yAt(-20)}`;
+    for (let x=-20; x<=W+20; x+=10) d += ` L${x} ${yAt(x).toFixed(1)}`;
+    d += ` L${W+20} ${H+30} Z`;
+    el("path", { d, fill, ...ink }, g);
+    for (let i=0;i<hatch;i++){ const x=r()*W, y=yAt(x)+14+r()*40;
+      el("path", { d:`M${x} ${y} l7 -5 M${x+6} ${y+3} l7 -5`, stroke:INK, "stroke-width":1.3, opacity:T.hatch, fill:"none" }, g); }
+    return yAt;
+  };
+  hill(H*.56, 22, 1.2, .4, T.hills[0], 26);
+  hill(H*.63, 26, .9, 2.2, T.hills[1], 28);
+  const plumY = hill(H*.72, 22, 1.4, 4.1, T.hills[2], 30);
+  hill(H*.86, 18, 1.1, 1.0, T.hills[3], 34);
+
+  /* lollipop trees along the plum hill */
+  [120,330,560,700].forEach(x => { const y = plumY(x);
+    el("line", { x1:x, y1:y+2, x2:x, y2:y-26, stroke:INK, "stroke-width":2.4 }, g);
+    el("circle", { cx:x, cy:y-34, r:13, fill:T.tree, ...ink, "stroke-width":2.2 }, g); });
+
+  /* winding road into the distance */
+  const road = resample(cubic({x:W*.44,y:H+20},{x:W*.62,y:H*.86},{x:W*.36,y:H*.74},{x:W*.53,y:H*.6},120), 4);
+  const L=[], R=[];
+  road.forEach((p,i) => { const a=road[Math.max(0,i-1)], b=road[Math.min(road.length-1,i+1)], dx=b.x-a.x, dy=b.y-a.y, l=Math.hypot(dx,dy)||1;
+    const w = 34*(1-i/road.length)+2; L.push([p.x-dy/l*w, p.y+dx/l*w]); R.push([p.x+dy/l*w, p.y-dx/l*w]); });
+  el("path", { d:"M"+L.map(q=>q.join(" ")).join(" L")+" L"+R.reverse().map(q=>q.join(" ")).join(" L")+"Z", fill:T.road, ...ink, "stroke-width":2.2 }, g);
+
+  /* a lotus floating on a small pond (bottom right) */
+  let lx=W*.87, ly=H*.9, best=-1;
+  const dSeg=(p,a,b)=>{const vx=b.x-a.x,vy=b.y-a.y,t=Math.max(0,Math.min(1,((p.x-a.x)*vx+(p.y-a.y)*vy)/(vx*vx+vy*vy||1)));return Math.hypot(p.x-a.x-vx*t,p.y-a.y-vy*t);};
+  for (const fy of [.9,.8,.7]) for (let fx=.1; fx<=.9; fx+=.05){
+    if (fx>.36 && fx<.62) continue;                                  // keep the road clear
+    const c={x:W*fx,y:H*fy-30};
+    let d=Math.min(...(avoid.segs.map(([a,b])=>dSeg(c,a,b))), ...(avoid.points.map(q=>Math.hypot(c.x-q.x,c.y-q.y)+20)));
+    d -= (1-fy)*60;                                                   // gently prefer the lower hills
+    if (d>best){ best=d; lx=W*fx; ly=H*fy; }
+  }
+  el("ellipse", { cx:lx, cy:ly+10, rx:118, ry:24, fill:T.pond, ...ink, "stroke-width":2.2 }, g);
+  [[-60,4,36],[40,14,46],[-10,20,30]].forEach(([dx,dy,l]) => el("path", { d:`M${lx+dx} ${ly+dy} h${l}`, stroke:T.ripple, "stroke-width":1.6, "stroke-linecap":"round" }, g));
+  [[-84,6,22],[78,4,18],[-46,22,14]].forEach(([dx,dy,r]) =>
+    el("path", { d:`M${lx+dx} ${ly+dy} L${lx+dx+r} ${ly+dy-r*.18} A${r} ${r*.42} 0 1 1 ${lx+dx+r} ${ly+dy+r*.18} Z`, fill:T.pad, ...ink, "stroke-width":1.8 }, g));
+  const petal = (ang, len, wid, fill) => {
+    const pg = el("g", { transform:`translate(${lx} ${ly}) rotate(${ang})` }, g);
+    el("path", { d:`M0 0 C${-wid} ${-len*.35} ${-wid*.55} ${-len*.85} 0 ${-len} C${wid*.55} ${-len*.85} ${wid} ${-len*.35} 0 0Z`, fill, ...ink, "stroke-width":2 }, pg);
+    el("path", { d:`M0 ${-len*.15} Q${wid*.12} ${-len*.55} 0 ${-len*.85}`, fill:"none", stroke:T.vein, "stroke-width":1.2 }, pg);
+    el("path", { d:`M${-wid*.22} ${-len*.86} Q0 ${-len*1.02} ${wid*.22} ${-len*.86} Q0 ${-len*.94} ${-wid*.22} ${-len*.86}Z`, fill:T.tip }, pg);
+  };
+  [-72,-38,0,38,72].forEach(a => petal(a, 92, 24, T.petals[0]));
+  [-52,-18,18,52].forEach(a => petal(a, 82, 24, T.petals[1]));
+  el("ellipse", { cx:lx, cy:ly-50, rx:16, ry:7, fill:T.pod, ...ink, "stroke-width":1.8 }, g);
+  for (let i=-2;i<=2;i++) el("circle", { cx:lx+i*5.5, cy:ly-50, r:1.6, fill:INK }, g);
+  [-84,-58,58,84].forEach(a => petal(a, 60, 20, T.petals[2]));
+  petal(-26, 56, 22, T.petals[2]); petal(26, 56, 22, T.petals[2]);
+}
+
+
+/* ----------------- flags standing either side of the board ----------------- */
+const FLAGS = { dk: "Denmark", in: "India" };      // drawSideFlag knows how to draw these
+function drawSideFlag(svg, px, top, bottom, kind, dir){
+  const g = el("g", { "pointer-events":"none" }, svg), defs = svg.querySelector("defs");
+  const w = kind==="in" ? 78 : 72, h = 54, fy = top + 14;
+  /* pole, finial, little stand */
+  el("path", { d:`M${px-18} ${bottom+10} Q${px} ${bottom-8} ${px+18} ${bottom+10}Z`, fill:T.paper, stroke:INK, "stroke-width":2.4, "stroke-linejoin":"round" }, g);
+  el("line", { x1:px, y1:bottom, x2:px, y2:top, stroke:INK, "stroke-width":8, "stroke-linecap":"round" }, g);
+  el("line", { x1:px, y1:bottom, x2:px, y2:top, stroke:T.wood, "stroke-width":4, "stroke-linecap":"round" }, g);
+  el("circle", { cx:px, cy:top-5, r:7, fill:T.gold, stroke:INK, "stroke-width":2.2 }, g);
+  /* waving flag, flying toward the board */
+  const e = px + w*dir, shape = `M${px} ${fy} Q${px+w*.35*dir} ${fy-9} ${px+w*.65*dir} ${fy+2} T${e} ${fy+4} L${e} ${fy+h+4} Q${px+w*.65*dir} ${fy+h+6} ${px+w*.35*dir} ${fy+h-7} T${px} ${fy+h} Z`;
+  const id = "side-"+kind; el("path", { d:shape }, el("clipPath", { id }, defs));
+  const fg = el("g", { "clip-path":`url(#${id})` }, g), x = Math.min(px,e), y = fy-12, H2 = h+24;
+  if (kind==="dk"){                                                    // Dannebrog: cross nearer the hoist
+    const bar = h*4/28, vx = dir>0 ? px + w*12/37 : px - w*12/37 - bar;
+    el("rect", { x, y, width:w, height:H2, fill:"#C8102E" }, fg);
+    el("rect", { x:vx, y, width:bar, height:H2, fill:"#FFFFFF" }, fg);
+    el("rect", { x, y:fy + h/2 - bar/2, width:w, height:bar, fill:"#FFFFFF" }, fg);
+  } else {                                                             // Tiranga with the Ashoka Chakra
+    const band = h/3;
+    el("rect", { x, y, width:w, height:band+12, fill:"#FF9933" }, fg);
+    el("rect", { x, y:fy+band, width:w, height:band, fill:"#FFFFFF" }, fg);
+    el("rect", { x, y:fy+band*2, width:w, height:band+14, fill:"#138808" }, fg);
+    const cx = x + w/2, cy = fy + band*1.5, r = band*.42;
+    el("circle", { cx, cy, r, fill:"none", stroke:"#000080", "stroke-width":1.4 }, fg);
+    for (let k=0;k<12;k++){ const a=k/12*Math.PI; el("line", { x1:cx-Math.cos(a)*r, y1:cy-Math.sin(a)*r, x2:cx+Math.cos(a)*r, y2:cy+Math.sin(a)*r, stroke:"#000080", "stroke-width":.7 }, fg); }
+    el("circle", { cx, cy, r:1.3, fill:"#000080" }, fg);
+  }
+  /* a soft fold shadow and the ink outline */
+  el("path", { d:`M${px+w*.5*dir} ${fy} Q${px+w*.55*dir} ${fy+h*.5} ${px+w*.5*dir} ${fy+h}`, stroke:"rgba(0,0,0,.12)", "stroke-width":5, fill:"none" }, g);
+  el("path", { d:shape, fill:"none", stroke:INK, "stroke-width":2.4, "stroke-linejoin":"round" }, g);
+}
+
+/* ----------------------------- snakes ----------------------------- */
+function drawSnake(g, head, tail, pose, C, seed){
+  const H = { x:head.cx, y:head.cy }, T = { x:tail.cx, y:tail.cy };
+  const L = Math.hypot(T.x-H.x, T.y-H.y), dx=(T.x-H.x)/L, dy=(T.y-H.y)/L, nx=-dy, ny=dx;
+  const racer = pose !== "glide";
+  const bw = racer ? 8.5 : 10;
+  const cyc = racer ? Math.max(1.6, L/95) : Math.max(1, L/190);
+  const amp = (racer ? Math.min(20, L*.09) : Math.min(42, L*.16)) * (seed%2 ? 1 : -1);
+  const raw = [];
+  for (let i=0;i<=400;i++){ const u=i/400, o=amp*Math.sin(u*Math.PI*2*cyc)*(.3+.7*u)*(1-Math.pow(u,6));   /* tail always lands on its square */ raw.push({ x:H.x+dx*L*u+nx*o, y:H.y+dy*L*u+ny*o }); }
+  const P = resample(raw, 1.2), N = P.length-1;
+  const W = t => t<.07 ? bw*(.72+.28*t/.07) : t<.4 ? bw : Math.max(.45, bw*(1-.96*Math.pow((t-.4)/.6,1.15)));
+  const dir = i => { const a=P[Math.max(0,i-1)], b=P[Math.min(N,i+1)], ex=b.x-a.x, ey=b.y-a.y, l=Math.hypot(ex,ey)||1; return { dx:ex/l, dy:ey/l, nx:-ey/l, ny:ex/l }; };
+
+  /* draw in passes (outline → base → shading → sheen → markings) so colours never get buried */
+  const passes = [
+    w => [0, 2*w+3.6, INK, 1],
+    w => [0, 2*w, C.dark, 1],
+    w => [w*.2, w*1.4, C.mid, 1],
+    w => [w*.45, Math.max(.4, w*.28), C.sheen, .8]
+  ];
+  passes.forEach(pass => {
+    const pg = el("g", {}, g);
+    for (let i=N-1; i>=0; i--){
+      const t=i/N, a=P[i], b=P[i+1], k=dir(i), [off, wd, col, op] = pass(W(t));
+      el("line", { x1:a.x+k.nx*off, y1:a.y+k.ny*off, x2:b.x+k.nx*off, y2:b.y+k.ny*off,
+        stroke:col, "stroke-width":wd, "stroke-linecap":"round", opacity:op }, pg);
+    }
+  });
+  for (let i=4; i<N; i+=9){
+    const t=i/N; if (t<=.08 || t>=.88) continue;
+    const w=W(t), a=P[i], k=dir(i), l=w*.8, h=w*.5, pt=(x,y)=>`${a.x-k.dx*x+k.nx*y} ${a.y-k.dy*x+k.ny*y}`;
+    el("path", { d:`M${pt(l,0)} L${pt(0,h)} L${pt(-l,0)} L${pt(0,-h)}Z`, fill:C.mark }, g);
+  }
+  const k=dir(0), ang=Math.atan2(-k.dy,-k.dx)*180/Math.PI, hw=bw*1.3, o=P[0];
+  const h = el("g", { transform:`translate(${o.x} ${o.y}) rotate(${ang})` }, g);
+  el("path", { d:`M${-hw*.4} ${-hw*.74} C${hw*.35} ${-hw*1.06} ${hw*.95} ${-hw*1.02} ${hw*1.35} ${-hw*.66} Q${hw*1.78} ${-hw*.3} ${hw*1.78} 0 Q${hw*1.78} ${hw*.3} ${hw*1.35} ${hw*.66} C${hw*.95} ${hw*1.02} ${hw*.35} ${hw*1.06} ${-hw*.4} ${hw*.74}Z`,
+    fill:C.mid, stroke:INK, "stroke-width":2, "stroke-linejoin":"round" }, h);
+  el("path", { d:`M${hw*.05} 0 L${hw*.55} ${-hw*.3} L${hw*1.05} 0 L${hw*.55} ${hw*.3}Z`, fill:C.mark }, h);
+  [1,-1].forEach(sd => {
+    el("ellipse", { cx:hw*1.05, cy:hw*.64*sd, rx:hw*.25, ry:hw*.2, fill:C.eye, stroke:INK, "stroke-width":.8 }, h);
+    el("circle", { cx:hw*1.1, cy:hw*.64*sd, r:hw*.1, fill:"#0E0A14" }, h);
+  });
+}
+
+/* ----------------------------- ladders ---------------------------- */
+function drawLadder(g, from, to, highlight, pal){
+  const lg = el("g", { filter:"url(#hand)" }, g);
+  const p0={x:from.cx,y:from.cy}, p1={x:to.cx,y:to.cy}, dx=p1.x-p0.x, dy=p1.y-p0.y, len=Math.hypot(dx,dy);
+  const d={x:dx/len,y:dy/len}, n={x:-d.y,y:d.x}, hw=14, ext=14;
+  // rails = personality colour; rungs gold for big wins, wood otherwise
+  const wood = pal ? pal.mid : highlight ? T.gold : T.wood, grain = pal ? pal.dark : highlight ? T.goldGrain : T.woodGrain;
+  const rung = highlight ? T.gold : T.wood;
+  const line = (a,b,w,c,extra={}) => el("line", { x1:a.x, y1:a.y, x2:b.x, y2:b.y, stroke:c, "stroke-width":w, "stroke-linecap":"round", ...extra }, lg);
+  for (let s=20; s<len-6; s+=26){
+    const p={x:p0.x+d.x*s,y:p0.y+d.y*s}, a={x:p.x+n.x*hw,y:p.y+n.y*hw}, b={x:p.x-n.x*hw,y:p.y-n.y*hw};
+    line(a,b,9,INK); line(a,b,5,rung);
+  }
+  [1,-1].forEach(side => {
+    const a={x:p0.x-d.x*ext+n.x*hw*side, y:p0.y-d.y*ext+n.y*hw*side}, b={x:p1.x+d.x*ext+n.x*hw*side, y:p1.y+d.y*ext+n.y*hw*side};
+    line(a,b,11,INK); line(a,b,6.4,wood);
+    line({x:a.x+d.x*10,y:a.y+d.y*10},{x:b.x-d.x*10,y:b.y-d.y*10},1.1,grain,{ "stroke-dasharray":"14 9" });
+  });
+}
+
+/* ------------------------------ pawns ----------------------------- */
+function drawPawn(g, x, y, color){
+  const p = el("g", { transform:`translate(${x} ${y})` }, g);
+  el("ellipse", { cx:0, cy:11, rx:12, ry:5, fill:color, stroke:INK, "stroke-width":2 }, p);
+  el("path", { d:"M-8.5 10 Q-7.5 -2 -4.5 -6 L4.5 -6 Q7.5 -2 8.5 10 Z", fill:color, stroke:INK, "stroke-width":2, "stroke-linejoin":"round" }, p);
+  el("circle", { cx:0, cy:-12, r:8, fill:color, stroke:INK, "stroke-width":2 }, p);
+  el("path", { d:"M-4 -15 q2 -3 5 -3", fill:"none", stroke:"#fff", "stroke-width":1.6, opacity:.6, "stroke-linecap":"round" }, p);
+}
+
+
+/* ============================ OUR DATA → BOARD ============================ */
+// one palette per personality, last one = "Everyone" (neutral grey); saturated so pieces stand out from the scenery
+const PALETTES = [
+  { dark:"#9A6A12", mid:"#E8A820", sheen:"#F8D77A", mark:"#6E4A08", eye:"#3E2638" },
+  { dark:"#22755A", mid:"#3FAE86", sheen:"#A8E2C8", mark:"#17553F", eye:"#FFF4F2" },
+  { dark:"#A8325A", mid:"#E0628A", sheen:"#F6B8CC", mark:"#7E1F40", eye:"#FFF4F2" },
+  { dark:"#5A3FA0", mid:"#8C6CDB", sheen:"#CDBEF2", mark:"#3F2A7A", eye:"#FFF4F2" },
+  { dark:"#4E494D", mid:"#9C979B", sheen:"#DCD8DA", mark:"#3A3539", eye:"#FFF4F2" }
+];
+const PLAYER_COLORS = PALETTES.slice(0, 4).map(p => p.mid);   // pawn colour = colour of that personality's snakes, ladders, badges
+let LAY, BOARD;                                  // rebuilt from DATA by makeBoard()
+function makeBoard() {
+LAY = bestLayout(DATA);
+BOARD = {
+  rows: LAY.rows, cols: 10,
+  items: LAY.items.map((it, i) => {
+    const owner = DATA.players.findIndex(p => p.name === it.persona);
+    return { type: it.type === "L" ? "ladder" : "snake", from: it.from, to: it.to,
+      title: it.caption, note: it.text, challenge: it.challenge, persona: it.persona,
+      highlight: it.size === "big", pose: i % 2 ? "glide" : "racer", picture: it.picture,
+      pal: PALETTES[owner >= 0 ? owner : 4], badge: PALETTES[owner >= 0 ? owner : 4].mid };
+  }),
+  players: DATA.players.map((p, i) => ({ name: p.player || p.name, persona: p.name, color: PLAYER_COLORS[i], square: 1 }))
+};
+}
+let TILE;                                       // set by render()
+const state = { turn: 0, revealed: new Set() };
+
+function drawPawns(board) {
+  const g = document.getElementById("pawns"), byTile = {};
+  g.innerHTML = "";
+  board.players.forEach((p, i) => (byTile[p.square] ||= []).push(i));
+  Object.entries(byTile).forEach(([sq, ids]) => { const t = TILE(+sq);
+    ids.forEach((i, k) => {
+      const x = t.cx + (k - (ids.length - 1) / 2) * 26, y = t.y0 + 66, pg = el("g", { class: "pawn", "data-p": i }, g);
+      el("ellipse", { cx: x, cy: y + 2, rx: 17, ry: 25, fill: "#FFFFFF", opacity: .75 }, pg);   // halo, so pawns read on any background
+      drawPawn(el("g", { transform: `translate(${x} ${y}) scale(1.2) translate(${-x} ${-y})` }, pg), x, y, board.players[i].color);
+    }); });
+}
+
+// board coordinates -> square number (inverse of tile() in render), or null when off the board
+function squareAt(x, y, rows, cols) {
+  if (x < 0 || y < 0 || x >= cols * S || y >= rows * S) return null;
+  const c = Math.floor(x / S), r = rows - 1 - Math.floor(y / S);
+  return r * cols + (r % 2 === 0 ? c : cols - 1 - c) + 1;
+}
+
+// drag a pawn with mouse or finger; drop it on a square to move there
+function enableDrag() {
+  const svg = $("board");
+  let drag = null;
+  const at = e => { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); };
+  svg.addEventListener("pointerdown", e => {
+    const g = e.target.closest(".pawn");
+    if (!g) return;
+    e.preventDefault(); e.stopPropagation();
+    svg.setPointerCapture(e.pointerId);
+    drag = { g, i: +g.dataset.p, start: at(e) };
+    g.classList.add("dragging");
+  });
+  svg.addEventListener("pointermove", e => {
+    if (!drag) return;
+    const p = at(e);
+    drag.g.setAttribute("transform", `translate(${p.x - drag.start.x} ${p.y - drag.start.y})`);
+  });
+  svg.addEventListener("pointerup", e => {
+    if (!drag) return;
+    const { i } = drag, p = at(e), n = squareAt(p.x, p.y, BOARD.rows, BOARD.cols);
+    drag = null;
+    if (!n) return drawPawns(BOARD);                 // dropped off the board: snap back
+    BOARD.players[i].square = n;
+    $("status").textContent = `${BOARD.players[i].name} moved to ${n}`;
+    land(i);
+  });
+}
+
+// pictures shown on an item's card when it's opened, named by an item's "picture" field
+const PICTURES = { cow: drawCow, cake: drawCake };
+
+// the prize: a three-tier cake on a gold stand, pink drips, pearl trim, heart on top; centred on 0,0 (~60 units)
+function drawCake(g) {
+  const ink = { stroke: INK, "stroke-width": 2, "stroke-linejoin": "round" }, icing = "#FFFDF8", drip = "#F6B8CC";
+  el("path", { d: "M-8 27 L-12 35 L12 35 L8 27Z", fill: T.gold, ...ink }, g);                                        // stand foot
+  el("ellipse", { cx: 0, cy: 27, rx: 31, ry: 5, fill: T.gold, ...ink }, g);                                         // plate
+  [[-24, 6, 48, 20], [-17, -10, 34, 16], [-10, -24, 20, 14]].forEach(([x, y, w, h]) => {                            // tiers, bottom up
+    el("rect", { x, y, width: w, height: h, rx: 3, fill: icing, ...ink }, g);
+    const s = w / 4;                                                                                                // pink drips along the top
+    el("path", { d: `M${x} ${y + 1} h${w} v5 q${-s / 2} 6 ${-s} 0 q${-s / 2} 6 ${-s} 0 q${-s / 2} 6 ${-s} 0 q${-s / 2} 6 ${-s} 0Z`,
+      fill: drip, stroke: INK, "stroke-width": 1.4, "stroke-linejoin": "round" }, g);
+    for (let px = x + 4; px < x + w - 2; px += 6)                                                                   // pearl trim
+      el("circle", { cx: px, cy: y + h - 3, r: 1.5, fill: "#FFF4F2", stroke: INK, "stroke-width": .8 }, g);
+  });
+  el("path", { d: "M0 -27 C-7 -32 -7 -40 0 -36 C7 -40 7 -32 0 -27Z", fill: "#E0628A", ...ink, "stroke-width": 1.6 }, g); // heart topper
+  [[-32, -8, 5], [31, -14, 5], [22, -34, 4]].forEach(([x, y, s]) =>
+    el("path", { d: `M${x} ${y - s} L${x + s * .3} ${y - s * .3} L${x + s} ${y} L${x + s * .3} ${y + s * .3} L${x} ${y + s} L${x - s * .3} ${y + s * .3} L${x - s} ${y} L${x - s * .3} ${y - s * .3}Z`,
+      fill: "#FFF4F2", stroke: INK, "stroke-width": 1.2 }, g));                                                       // sparkles
+}
+function pictureSvg(name) {
+  if (!PICTURES[name]) return null;
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "-44 -48 88 100");
+  svg.setAttribute("class", `pic pic-${name}`);
+  svg.setAttribute("aria-hidden", "true");
+  PICTURES[name](el("g", {}, svg));
+  return svg;
+}
+
+// a white alpine cow with a fluffy fringe, big blush and a bell, in the board's inked style, centred on 0,0
+function drawCow(g) {
+  const ink = { stroke: INK, "stroke-width": 2, "stroke-linejoin": "round" };
+  const white = "#FFFDF8", pink = "#F6C9D3", hair = "#F1E2CC";
+  [-1, 1].forEach(s => {
+    el("path", { d: `M${s * 13} -25 Q${s * 18} -37 ${s * 26} -39`, fill: "none", stroke: INK, "stroke-width": 5.5, "stroke-linecap": "round" }, g); // horns
+    el("path", { d: `M${s * 13} -25 Q${s * 18} -37 ${s * 26} -39`, fill: "none", stroke: "#EBD9B4", "stroke-width": 3, "stroke-linecap": "round" }, g);
+    el("ellipse", { cx: s * 29, cy: -15, rx: 12.5, ry: 7, transform: `rotate(${s * 22} ${s * 29} -15)`, fill: white, ...ink }, g); // ears
+    el("ellipse", { cx: s * 29, cy: -15, rx: 6.5, ry: 3.4, transform: `rotate(${s * 22} ${s * 29} -15)`, fill: pink }, g);
+  });
+  el("path", { d: "M-18 22 Q0 30 18 22", fill: "none", stroke: "#C8574E", "stroke-width": 5, "stroke-linecap": "round" }, g);   // collar
+  el("path", { d: "M-20 -26 Q0 -34 20 -26 Q27 -4 19 16 Q0 24 -19 16 Q-27 -4 -20 -26Z", fill: white, ...ink }, g);               // head
+  el("path", { d: "M-21 -20 q1 -10 7 -9 q1 -9 8 -6 q3 -8 9 -3 q5 -6 9 1 q7 -3 8 6 q6 1 5 9 q-4 6 -9 2 q-3 6 -9 1 q-4 6 -9 0 q-5 5 -9 -1 q-6 4 -10 0Z",
+    fill: hair, ...ink, "stroke-width": 1.6 }, g);                                                                                 // fluffy fringe
+  el("ellipse", { cx: 0, cy: 12, rx: 16, ry: 10.5, fill: pink, ...ink }, g);                                                   // muzzle
+  [-1, 1].forEach(s => {
+    el("ellipse", { cx: s * 6, cy: 12, rx: 2.4, ry: 3.2, fill: INK }, g);                                                        // nostrils
+    el("circle", { cx: s * 9, cy: -4, r: 4, fill: INK }, g);                                                                     // eyes
+    el("circle", { cx: s * 9 + 1.4, cy: -5.5, r: 1.4, fill: "#FFFFFF" }, g);
+    el("ellipse", { cx: s * 16, cy: 5, rx: 6, ry: 4.2, fill: "#F28BAA", opacity: .85 }, g);                                       // blush
+  });
+  el("path", { d: "M-7 26 L7 26 L10 40 L-10 40Z", fill: T.gold, ...ink }, g);                                                   // bell
+  el("circle", { cx: 0, cy: 41, r: 2.6, fill: INK }, g);
+}
+
+// banner art (main heading and how-to-play header): the board's sky, hills, a ladder and two snakes.
+// Sized from the svg's viewBox; drawn once per svg.
+function drawBannerArt(svg) {
+  if (svg.childElementCount) return;
+  const { width: W, height: H } = svg.viewBox.baseVal, r = rng(5), ink = { stroke: INK, "stroke-width": 2.4, "stroke-linejoin": "round" };
+  [0, .2, .36, .5, .62].forEach((y, k) => el("rect", { x: 0, y: y * H, width: W, height: H, fill: T.sky[k] }, svg));
+  for (let i = 0; i < W / 17; i++) el("circle", { cx: r() * W, cy: r() * H * .6, r: .8 + r() * 1.6, fill: T.star, opacity: .5 + r() * .5 }, svg);
+  if (T.hearts) for (let i = 0; i < W / 68; i++) { const x = r() * W, y = r() * H * .6, s = .6 + r() * .5;
+    el("path", { d: `M${x} ${y + 5 * s} C${x - 9 * s} ${y - s} ${x - 6 * s} ${y - 8 * s} ${x} ${y - 3 * s} C${x + 6 * s} ${y - 8 * s} ${x + 9 * s} ${y - s} ${x} ${y + 5 * s}Z`, fill: T.hearts }, svg); }
+  el("path", { d: `M0 ${H} L0 ${H * .84} Q${W * .18} ${H * .73} ${W * .35} ${H * .83} T${W * .7} ${H * .8} T${W} ${H * .78} L${W} ${H}Z`, fill: T.hills[2], ...ink }, svg);
+  el("path", { d: `M0 ${H} L0 ${H * .92} Q${W * .25} ${H * .85} ${W * .5} ${H * .93} T${W} ${H * .89} L${W} ${H}Z`, fill: T.hills[3], ...ink }, svg);
+  drawLadder(el("g", {}, svg), { cx: W * .1, cy: H + 15 }, { cx: W * .1 + 55, cy: -15 }, true, PALETTES[0]);
+  drawSnake(el("g", {}, svg), { cx: W * .87, cy: H * .21 }, { cx: W * .87 - 70, cy: H + 5 }, "glide", PALETTES[2], 1);
+  drawSnake(el("g", {}, svg), { cx: W * .1 + 140, cy: H * .15 }, { cx: W * .1 + 90, cy: H * .6 }, "racer", PALETTES[3], 2);
+}
+
+/* -------------------------- interactions -------------------------- */
+// user text goes into innerHTML, so escape it ("R&D" or "<3" must show as typed)
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const html = it => `<div class="kind">${it.type === "ladder" ? "ACHIEVEMENT" : "BY THE WAY"}</div><h3>${esc(it.title)}</h3><p>${esc(it.note)}</p>` +
+  (it.challenge ? `<p><b>Escape challenge:</b> ${esc(it.challenge)}</p>` : "") + `<div class="route">${it.from} → ${it.to} · ${esc(it.persona)}</div>`;
+let select = () => {};
+
+function wire(board, groups) {
+  const wrap = document.getElementById("wrap"), svg = document.getElementById("board"), pop = document.getElementById("pop");
+  let active = null;
+  select = (i, e) => {
+    if (i !== null && !state.revealed.has(i)) { state.revealed.add(i); refreshCards(); }   // clicking reveals it (printed board, offline play)
+    groups.forEach(g => g.classList.remove("active"));
+    document.querySelectorAll(".cards .card").forEach(c => c.classList.toggle("active", +c.dataset.i === i && i !== active));
+    if (i === null || i === active) { active = null; svg.classList.remove("dim"); pop.classList.remove("show"); return; }
+    active = i; groups[i].classList.add("active"); svg.classList.add("dim");
+    pop.innerHTML = html(board.items[i]);
+    const pic = pictureSvg(board.items[i].picture);
+    if (pic) pop.prepend(pic);
+    const wr = wrap.getBoundingClientRect(), gr = groups[i].getBoundingClientRect();
+    let x = (e && e.clientX ? e.clientX : gr.left + gr.width / 2) - wr.left + 14, y = (e && e.clientY ? e.clientY : gr.top + gr.height / 2) - wr.top - 20;
+    pop.style.left = Math.max(6, Math.min(x, wr.width - 260)) + "px"; pop.style.top = Math.max(6, Math.min(y, wr.height - 160)) + "px";
+    pop.classList.add("show");
+  };
+  groups.forEach((g, i) => g.addEventListener("click", e => { e.stopPropagation(); select(i, e); }));
+  svg.onclick = () => select(null);               // onclick, not addEventListener: wire() runs on every rebuild
+  refreshCards();
+}
+
+// cards below the board: only the ones already revealed
+function refreshCards() {
+  const cards = document.getElementById("cards");
+  cards.innerHTML = "";
+  BOARD.items.forEach((it, i) => {
+    if (!state.revealed.has(i)) return;
+    const c = document.createElement("div"); c.className = "card"; c.dataset.i = i; c.innerHTML = html(it);
+    c.addEventListener("click", () => select(i)); cards.appendChild(c);
+  });
+  $("read").hidden = state.revealed.size === 0;
+  $("read-count").textContent = `${state.revealed.size} of ${BOARD.items.length}`;
+}
+
+/* ------------------------------ game ------------------------------ */
+const $ = id => document.getElementById(id);
+
+function showPlayers() {
+  $("players").innerHTML = BOARD.players.map((p, i) =>
+    `<span class="chip${i === state.turn ? " on" : ""}" style="--pc:${p.color}"><span class="dot" style="background:${p.color}"></span>` +
+    `${esc(p.name)}${p.name !== p.persona ? " (" + esc(p.persona) + ")" : ""}<b title="square">${p.square}</b></span>`).join("");
+}
+
+// card label and buttons per card type; each button says whether the pawn moves along the item
+const CARD = {
+  ladder: ["ACHIEVEMENT · LADDER", [["Climb", true]]],
+  snake:  ["BY THE WAY · SNAKE", [["Escaped", false], ["Slide down", true]]],
+  finish: ["FINISH · THE PRIZE", [["Keep playing", false]]],
+};
+
+function showCard(it, onDone) {
+  const [kind, btns] = CARD[it.type];
+  $("m-pic").replaceChildren(...[pictureSvg(it.picture)].filter(Boolean));
+  $("m-kind").textContent = kind;
+  $("m-title").textContent = it.title;
+  $("m-note").textContent = it.note;
+  $("m-persona").textContent = it.persona ? `${it.from} → ${it.to} · ${it.persona}` : "";
+  $("m-challenge-text").textContent = it.challenge || "";
+  $("m-challenge").hidden = !it.challenge;
+  $("m-buttons").innerHTML = btns.map(([t], i) => `<button class="btn ${i ? "ghost" : ""}" data-i="${i}">${t}</button>`).join("");
+  $("m-buttons").querySelectorAll("button").forEach(b => b.onclick = () => { $("modal").hidden = true; onDone(btns[b.dataset.i][1]); });
+  $("modal").hidden = false;
+}
+
+function roll() {
+  if (!$("modal").hidden) return;               // a card is open (Enter/Space on the focused Roll button would roll again)
+  const N = BOARD.rows * BOARD.cols, p = BOARD.players[state.turn], d = 1 + Math.floor(Math.random() * 6);
+  p.square = Math.min(N, p.square + d);
+  $("status").textContent = `${p.name} rolled ${d}`;
+  land(state.turn);
+}
+
+// player pi has just arrived on their square (by roll or drag): open the card if there is one, then pass the turn
+function land(pi) {
+  const N = BOARD.rows * BOARD.cols, p = BOARD.players[pi];
+  drawPawns(BOARD);
+  const done = () => {
+    state.turn = (pi + 1) % BOARD.players.length;
+    drawPawns(BOARD); showPlayers();
+    if (p.square !== N) return;
+    $("status").textContent = `${p.name} wins!`;
+    showCard({ type: "finish", title: `${p.name} wins!`, note: DATA.prize || "Claim your prize.", picture: DATA.prizePicture || "cake" }, () => {});
+  };
+  const i = BOARD.items.findIndex(it => it.from === p.square);
+  if (i < 0) return done();
+  state.revealed.add(i); refreshCards();
+  showCard(BOARD.items[i], move => { if (move) p.square = BOARD.items[i].to; done(); });
+}
+
+function showRules() {
+  $("r-title").textContent = DATA.title;
+  $("r-last").textContent = BOARD.rows * BOARD.cols;
+  $("r-cast").innerHTML = BOARD.players.map((p, i) =>
+    `<div class="who" style="background:${p.color}2E"><svg viewBox="-15 -23 30 42"></svg>` +
+    `<div><b>${esc(p.persona)}</b>${DATA.players[i].vibe ? `<i>${esc(DATA.players[i].vibe)}</i>` : ""}</div></div>`).join("");
+  $("r-cast").querySelectorAll("svg").forEach((s, i) => drawPawn(s, 0, 0, BOARD.players[i].color));
+  drawBannerArt($("r-art"));
+  $("rules").hidden = false;
+  $("r-close").focus();
+}
+
+// (re)draw everything from DATA: on load, and on every change in design mode
+function build() {
+  T = THEMES[window.THEME || new URLSearchParams(location.search).get("theme") || DATA.theme] || THEMES.dusk;
+  INK = T.ink; SNAKE_PALETTES = T.snakes;
+  const rs = document.documentElement.style;
+  rs.setProperty("--parchment", T.page); rs.setProperty("--paper", T.card); rs.setProperty("--ink", T.ink);
+  rs.setProperty("--ink-soft", T.inkSoft); rs.setProperty("--emerald", T.accent);
+
+  makeBoard();
+  state.turn = 0; state.revealed.clear();
+  $("modal").hidden = true;
+  $("warning").hidden = !LAY.dropped.length;
+  $("warning").textContent = `⚠ ${LAY.dropped.length} item(s) didn't fit on the board and are missing: ` +
+    LAY.dropped.map(x => `${x.id} "${x.caption}"`).join(", ") + `. Press "Shuffle board" in design mode, or remove a few.`;
+  document.title = DATA.title;
+  $("title").textContent = DATA.title;
+  $("sub").textContent = DATA.subtitle;
+  $("sub").hidden = !DATA.subtitle;
+  $("r-judge").hidden = !DATA.judge;
+  $("r-judge-name").textContent = DATA.judge || "";
+  $("status").textContent = "Drag a pawn to move it, or roll.";
+  render(BOARD);
+  const vb = $("board").viewBox.baseVal;           // keep the whole board on screen: cap its width by the window height
+  $("wrap").style.maxWidth = `calc((100vh - 24px) * ${(vb.width / vb.height).toFixed(3)})`;
+  $("h-art").innerHTML = ""; $("r-art").innerHTML = "";   // banner art is theme-coloured: redraw
+  drawBannerArt($("h-art"));
+  showPlayers();
+}
+
+/* ---------------------------- design mode ----------------------------
+   A form that edits DATA and rebuilds the board live. "Download game" saves a copy of this
+   page (as it was loaded, see SOURCE) with the new DATA, so the result is one file to share. */
+const DRAFT = "snl-draft";
+const SIZES = ["small", "medium", "big"];
+const NEW = {
+  players: n => ({ name: `Personality ${n}`, player: "", vibe: "" }),
+  ladders: () => ({ caption: "New ladder", text: "", challenge: "", persona: "Everyone", size: "medium", picture: "" }),
+  snakes:  () => ({ caption: "New snake", text: "", challenge: "", persona: "Everyone", size: "medium", picture: "" }),
+};
+let rebuildTimer;
+
+function designForm(focusPath) {
+  const d = DATA, f = $("d-form"), keep = focusPath || document.activeElement?.dataset?.path;
+  const opts = (list, cur) => list.map(([v, t]) => `<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(t)}</option>`).join("");
+  const inp = (label, path, v) => `<label>${label}<input data-path="${path}" value="${esc(v ?? "")}"></label>`;
+  const txt = (label, path, v) => `<label>${label}<textarea data-path="${path}" rows="2">${esc(v ?? "")}</textarea></label>`;
+  const sel = (label, path, v, list) => `<label>${label}<select data-path="${path}">${opts(list, v ?? "")}</select></label>`;
+  const personas = [...d.players.map(p => [p.name, p.name]), ["Everyone", "Everyone"]];
+  const pics = Object.keys(PICTURES).map(k => [k, k]);
+  const flags = [["", "None"], ...Object.entries(FLAGS)];
+  const item = (list, it, i) => `<div class="d-item"><button class="d-x" data-del="${list}.${i}" title="Remove">×</button>` +
+    inp("CAPTION · ON THE BOARD", `${list}.${i}.caption`, it.caption) +
+    txt("STORY · ON THE CARD", `${list}.${i}.text`, it.text) +
+    (list === "snakes" ? txt("ESCAPE CHALLENGE", `${list}.${i}.challenge`, it.challenge) : "") +
+    `<div class="d-row3">${sel("PERSONALITY", `${list}.${i}.persona`, it.persona, personas)}` +
+    `${sel("SIZE", `${list}.${i}.size`, it.size, SIZES.map(s => [s, s]))}` +
+    `${sel("PICTURE", `${list}.${i}.picture`, it.picture, [["", "None"], ...pics])}</div></div>`;
+  const top = f.parentNode.scrollTop;
+  f.innerHTML = `
+    <h4>THE GAME</h4>
+    ${inp("TITLE", "title", d.title)}${inp("SUBTITLE", "subtitle", d.subtitle)}
+    ${inp("JUDGE · HAS THE FINAL SAY ON CHALLENGES", "judge", d.judge)}${inp("PRIZE", "prize", d.prize)}
+    <div class="d-row">${sel("THEME", "theme", d.theme || "dusk", Object.entries(THEMES).map(([k, t]) => [k, t.name]))}
+      ${sel("PRIZE PICTURE", "prizePicture", d.prizePicture || "cake", [...pics, ["none", "None"]])}</div>
+    <div class="d-row">${sel("LEFT FLAG", "flags.0", d.flags[0], flags)}${sel("RIGHT FLAG", "flags.1", d.flags[1], flags)}</div>
+    <button class="btn ghost small" data-act="shuffle">Shuffle board</button>
+    <h4>PERSONALITIES · ${d.players.length} OF 4</h4>
+    ${d.players.map((p, i) => `<div class="d-item" style="border-left:10px solid ${PALETTES[i].mid}">` +
+      (d.players.length > 1 ? `<button class="d-x" data-del="players.${i}" title="Remove">×</button>` : "") +
+      `<div class="d-row">${inp("NAME", `players.${i}.name`, p.name)}${inp("PLAYED BY · OPTIONAL", `players.${i}.player`, p.player)}</div>` +
+      inp("VIBE", `players.${i}.vibe`, p.vibe) + `</div>`).join("")}
+    ${d.players.length < 4 ? `<button class="btn ghost small" data-add="players">+ Add personality</button>` : ""}
+    <h4>LADDERS · ${d.ladders.length}</h4>${d.ladders.map((it, i) => item("ladders", it, i)).join("")}
+    <button class="btn ghost small" data-add="ladders">+ Add ladder</button>
+    <h4>SNAKES · ${d.snakes.length}</h4>${d.snakes.map((it, i) => item("snakes", it, i)).join("")}
+    <button class="btn ghost small" data-add="snakes">+ Add snake</button>
+    <h4>START OVER</h4>
+    <button class="btn ghost small" data-act="blank">Start from a blank game</button>`;
+  f.parentNode.scrollTop = top;
+  const target = keep && f.querySelector(`[data-path="${keep}"]`);
+  if (target) { target.focus(); if (focusPath) target.scrollIntoView({ block: "center" }); }
+}
+
+// something in DATA changed: keep a draft, rebuild the board once typing pauses
+function changed() {
+  try { localStorage.setItem(DRAFT, JSON.stringify(DATA)); } catch {}
+  clearTimeout(rebuildTimer);
+  rebuildTimer = setTimeout(build, 300);
+}
+
+function setPath(path, v) {
+  const keys = path.split("."), last = keys.pop(), o = keys.reduce((o, k) => o[k], DATA);
+  if (/^players\.\d+\.name$/.test(path))           // renaming a personality: its snakes and ladders follow
+    [...DATA.ladders, ...DATA.snakes].forEach(it => { if (it.persona === o[last]) it.persona = v; });
+  o[last] = v;
+}
+
+// this page with DATA swapped in. JSON is escaped so a closing script tag or comment in a story can't break the file.
+function gameHtml() {
+  const json = JSON.stringify(DATA).replace(/</g, "\\u003c").replace(/\*\//g, "*\\/");
+  return SOURCE.replace(/\/\*DATA\*\/[\s\S]*?\/\*END\*\//, () => "/*DATA*/" + json + "/*END*/");
+}
+
+function download() {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([gameHtml()], { type: "text/html" }));
+  a.download = (`${DATA.title} ${DATA.subtitle || ""}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "game") + ".html";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function openDesign() {
+  if (!$("designer").hidden) return;
+  let draft = null; try { draft = localStorage.getItem(DRAFT); } catch {}
+  if (draft && draft !== JSON.stringify(DATA) && confirm("You have an unsaved design from last time. Restore it?"))
+    Object.assign(DATA, JSON.parse(draft));
+  DATA.flags = [...(DATA.flags || []), "", ""].slice(0, 2);
+  $("rules").hidden = true;
+  $("designer").hidden = false;
+  document.body.classList.add("designing");
+  designForm();
+  build();
+}
+
+function closeDesign() {
+  history.replaceState(null, "", location.pathname + location.search);
+  $("designer").hidden = true;
+  document.body.classList.remove("designing");
+  clearTimeout(rebuildTimer);
+  build();
+}
+
+$("d-form").addEventListener("input", e => { if (e.target.dataset.path) { setPath(e.target.dataset.path, e.target.value); changed(); } });
+$("d-form").addEventListener("change", e => {          // a renamed personality: refresh the personality dropdowns
+  if (/^players\.\d+\.name$/.test(e.target.dataset.path || "")) designForm();
+});
+$("d-form").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  let focus;
+  if (b.dataset.del) {
+    const [list, i] = b.dataset.del.split("."), [gone] = DATA[list].splice(+i, 1);
+    if (list === "players") [...DATA.ladders, ...DATA.snakes].forEach(it => { if (it.persona === gone.name) it.persona = "Everyone"; });
+  }
+  if (b.dataset.add) {
+    const list = b.dataset.add;
+    DATA[list].push(NEW[list](DATA[list].length + 1));
+    focus = `${list}.${DATA[list].length - 1}.${list === "players" ? "name" : "caption"}`;
+  }
+  if (b.dataset.act === "shuffle") DATA.seed = 1 + Math.floor(Math.random() * 99999);
+  if (b.dataset.act === "blank") {
+    if (!confirm("Clear everything and start from a blank game?")) return;
+    Object.assign(DATA, { title: "Snakes & Ladders", subtitle: "", judge: "", prize: "", players: [NEW.players(1)], ladders: [], snakes: [] });
+  }
+  designForm(focus);
+  changed();
+});
+$("d-save").onclick = download;
+$("d-close").onclick = closeDesign;
+addEventListener("hashchange", () => { if (location.hash === "#design") openDesign(); });
+
+$("roll").onclick = roll;
+$("how").onclick = showRules;
+$("r-close").onclick = () => { $("rules").hidden = true; };
+enableDrag();
+if (location.hash === "#design") openDesign();
+else { build(); showRules(); }
+</script>
