@@ -105,6 +105,13 @@
   .pic{float:right; width:84px; height:96px; margin:-4px -4px 4px 8px}
   .modal .pic{width:120px; height:136px}
   .pawn{cursor:grab; touch-action:none}
+  /* roll animation: the die tumbles, the pawn hops square to square */
+  .die{width:40px; height:40px; flex:none; cursor:pointer; filter:drop-shadow(3px 3px 0 rgba(26,20,36,.25))}
+  .die.rolling{animation:tumble .14s linear infinite}
+  @keyframes tumble{0%,100%{transform:rotate(-14deg) translateY(-3px)} 50%{transform:rotate(14deg) translateY(1px)}}
+  .pawn.hop{animation:hop .18s ease-out}
+  @keyframes hop{50%{transform:translateY(-16px)}}
+  @media (prefers-reduced-motion:reduce){ .die.rolling,.pawn.hop{animation:none} }
   .pawn.dragging{cursor:grabbing}
   /* design mode: a parchment panel on the right; the board stays visible beside it on wide screens */
   .design-link{text-align:center; margin:14px 0 0}
@@ -140,8 +147,9 @@
   <section class="scoreboard">
     <div class="controls">
       <button class="btn" id="roll">Roll</button>
+      <svg id="die" class="die" viewBox="0 0 40 40" aria-hidden="true"></svg>
       <button class="btn ghost" id="how">How to play</button>
-      <span id="status">Drag a pawn to move it, or roll.</span>
+      <span id="status" aria-live="polite">Drag a pawn to move it, or roll.</span>
     </div>
     <div class="players" id="players"></div>
   </section>
@@ -204,7 +212,7 @@
 
 <script>
 const SOURCE = document.documentElement.outerHTML;   // this page as loaded, before any drawing: design mode saves copies of it
-const DATA = /*DATA*/{"title": "Snakes & Ladders", "subtitle": "Wonderland edition", "theme": "blush", "judge": "The Queen of Hearts", "prize": "Jam tarts all round. The Knave swears he hasn't touched them.", "prizePicture": "cake", "flags": [], "seed": 7, "players": [{"name": "The Curious One", "player": "", "vibe": "Sees a rabbit with a pocket watch, follows it. No questions asked."}, {"name": "The Size-Changer", "player": "", "vibe": "Nine feet tall by lunch, three inches by tea."}, {"name": "The Tea Party Guest", "player": "", "vibe": "Never misses a party, even one that never ends."}, {"name": "The Rule Questioner", "player": "", "vibe": "Has read the rules. Thinks they're nonsense. Says so."}], "ladders": [{"caption": "Follows the White Rabbit", "text": "A rabbit ran past checking a pocket watch. Obviously she followed it.", "challenge": "", "persona": "The Curious One", "size": "big", "picture": ""}, {"caption": "Eats the cake", "text": "The little cake said EAT ME, so she did, and shot up to nine feet tall.", "challenge": "", "persona": "The Size-Changer", "size": "big", "picture": "cake"}, {"caption": "Finds the golden key", "text": "Sitting on a glass table, as if someone had left it there just for her.", "challenge": "", "persona": "The Curious One", "size": "medium", "picture": ""}, {"caption": "Gets a seat at the tea party", "text": "\"No room!\" they cried. There was plenty of room. She sat down anyway.", "challenge": "", "persona": "The Tea Party Guest", "size": "medium", "picture": ""}, {"caption": "Wins the Caucus race", "text": "Everyone ran in circles, everyone won, and everyone got a prize.", "challenge": "", "persona": "Everyone", "size": "medium", "picture": ""}, {"caption": "Answers the Caterpillar", "text": "\"Who are YOU?\" She told him, eventually, after some thought.", "challenge": "", "persona": "The Rule Questioner", "size": "small", "picture": ""}, {"caption": "Picks the right side of the mushroom", "text": "One side makes you taller, the other makes you shorter. She worked out which was which.", "challenge": "", "persona": "The Size-Changer", "size": "medium", "picture": ""}, {"caption": "Befriends the Cheshire Cat", "text": "He kept vanishing, but the grin stayed, and so did the friendship.", "challenge": "", "persona": "The Curious One", "size": "small", "picture": ""}, {"caption": "Learns the Lobster Quadrille", "text": "The Mock Turtle taught her every step. She still has the moves.", "challenge": "", "persona": "The Tea Party Guest", "size": "medium", "picture": ""}, {"caption": "Stands up in court", "text": "\"Stuff and nonsense!\" she told the Queen to her face, and grew to full size while saying it.", "challenge": "", "persona": "The Rule Questioner", "size": "big", "picture": ""}, {"caption": "Wakes up under the tree", "text": "It was all a dream, and she remembered every bit of it.", "challenge": "", "persona": "Everyone", "size": "medium", "picture": ""}], "snakes": [{"caption": "Down the rabbit hole", "text": "Down, down, down. It took so long she had time to wonder whether cats eat bats.", "challenge": "Name five things you'd grab off the shelves on the way down, in ten seconds.", "persona": "The Curious One", "size": "big", "picture": ""}, {"caption": "Drinks the shrinking potion", "text": "DRINK ME, said the bottle. Now she's ten inches tall and the key is still on the table.", "challenge": "Cross the room as small as you can make yourself. The Queen decides if you were small enough.", "persona": "The Size-Changer", "size": "big", "picture": ""}, {"caption": "A pool of tears", "text": "She cried while she was nine feet tall. Now she's swimming in it.", "challenge": "Cry convincingly for five seconds without laughing.", "persona": "The Size-Changer", "size": "medium", "picture": ""}, {"caption": "The riddle with no answer", "text": "The Hatter asked her a riddle, then admitted he didn't know the answer either.", "challenge": "Why is a raven like a writing desk? Give an answer. The Queen decides if it's good enough.", "persona": "The Tea Party Guest", "size": "medium", "picture": ""}, {"caption": "Clean cup, move down", "text": "Every time she settled in, everyone had to move one seat along. The March Hare spilt the milk.", "challenge": "Pour an imaginary cup of tea for everyone without spilling a drop. The Queen watches closely.", "persona": "The Tea Party Guest", "size": "small", "picture": ""}, {"caption": "Painting the roses red", "text": "The gardeners planted white roses by mistake, and she got roped into the cover-up.", "challenge": "Point at three red things in the room in five seconds.", "persona": "Everyone", "size": "medium", "picture": ""}, {"caption": "Croquet with a flamingo", "text": "The mallet was a flamingo, the ball was a hedgehog, and neither would cooperate.", "challenge": "Stand on one leg like a flamingo for fifteen seconds.", "persona": "The Rule Questioner", "size": "medium", "picture": ""}, {"caption": "Off with her head!", "text": "She disagreed with the Queen. The Queen did not take it well.", "challenge": "Bow to the Queen and pay her a compliment. If she smiles, you escape.", "persona": "The Rule Questioner", "size": "big", "picture": ""}, {"caption": "Asks the Cat for directions", "text": "\"That depends a good deal on where you want to get to.\" She had no idea.", "challenge": "Give directions to the kitchen using only riddles. The Queen decides if they make sense.", "persona": "The Curious One", "size": "medium", "picture": ""}, {"caption": "Gets the poem wrong", "text": "She tried to recite the one about the busy bee, and out came a crocodile.", "challenge": "Recite a nursery rhyme with one word changed in every line.", "persona": "Everyone", "size": "small", "picture": ""}, {"caption": "Stuck in the Rabbit's house", "text": "Grew too big indoors. One arm out of the window, one foot up the chimney.", "challenge": "Make yourself as big as you can without leaving your chair. The Queen judges.", "persona": "The Size-Changer", "size": "small", "picture": ""}]}/*END*/;
+const DATA = /*DATA*/{"title": "Snakes & Ladders", "subtitle": "Wonderland edition", "theme": "blush", "judge": "The Queen of Hearts", "prize": "A plate of jam tarts, provided the Knave hasn't got to them first.", "prizePicture": "cake", "flags": [], "seed": 7, "players": [{"name": "The Curious One", "player": "", "vibe": "Curiouser and curiouser! Has never yet met a door she could leave unopened."}, {"name": "The Size-Changer", "player": "", "vibe": "Has been so many different sizes in one day that it's very confusing."}, {"name": "The Tea Party Guest", "player": "", "vibe": "It's always six o'clock, so it's always tea-time, and she is always invited (whatever the Hatter says)."}, {"name": "The Rule Questioner", "player": "", "vibe": "Knows Rule Forty-two by heart, and doesn't think much of it."}], "ladders": [{"caption": "Follows the White Rabbit", "text": "A rabbit with a waistcoat-pocket, and a watch to take out of it! Burning with curiosity, she was down the hole after it in a moment, never once considering how in the world she was to get out again.", "challenge": "", "persona": "The Curious One", "size": "big", "picture": ""}, {"caption": "Eats the cake", "text": "EAT ME, said the little cake, marked in currants, so she did. \"Curiouser and curiouser!\" she cried, opening out like the largest telescope that ever was.", "challenge": "", "persona": "The Size-Changer", "size": "big", "picture": "cake"}, {"caption": "Finds the golden key", "text": "A tiny golden key, upon a little three-legged table all made of solid glass. It fitted none of the doors at all, until, at the second time round, it fitted exactly the right one.", "challenge": "", "persona": "The Curious One", "size": "medium", "picture": ""}, {"caption": "Gets a seat at the tea party", "text": "\"No room! No room!\" they cried. \"There's PLENTY of room!\" said she, indignantly, and sat down in a large arm-chair at one end of the table.", "challenge": "", "persona": "The Tea Party Guest", "size": "medium", "picture": ""}, {"caption": "Wins the Caucus race", "text": "They began running when they liked and left off when they liked, and at the end the Dodo declared, \"EVERYBODY has won, and all must have prizes.\"", "challenge": "", "persona": "Everyone", "size": "medium", "picture": ""}, {"caption": "Answers the Caterpillar", "text": "\"Who are YOU?\" said the Caterpillar, which was not an encouraging opening. She answered him very politely, and came away with some most useful advice about mushrooms.", "challenge": "", "persona": "The Rule Questioner", "size": "small", "picture": ""}, {"caption": "Picks the right side of the mushroom", "text": "\"One side will make you grow taller, and the other side will make you grow shorter.\" One side of WHAT? She worked it out, nibbling first at one and then at the other, until she was her usual height.", "challenge": "", "persona": "The Size-Changer", "size": "medium", "picture": ""}, {"caption": "Befriends the Cheshire Cat", "text": "He vanished quite slowly, beginning with the end of the tail and ending with the grin, which remained some time after the rest of him had gone. They have been the firmest of friends ever since.", "challenge": "", "persona": "The Curious One", "size": "small", "picture": ""}, {"caption": "Learns the Lobster Quadrille", "text": "\"Will you, won't you, will you, won't you, will you join the dance?\" She would, and she did, and she remembers every step to this day.", "challenge": "", "persona": "The Tea Party Guest", "size": "medium", "picture": ""}, {"caption": "Stands up in court", "text": "\"Who cares for you?\" said she, for she had grown to her full size by this time. \"You're nothing but a pack of cards!\" And nobody felt like arguing.", "challenge": "", "persona": "The Rule Questioner", "size": "big", "picture": ""}, {"caption": "Wakes up under the tree", "text": "\"Oh, I've had such a curious dream!\" And she told her sister every bit of it, which took rather a long time.", "challenge": "", "persona": "Everyone", "size": "medium", "picture": ""}], "snakes": [{"caption": "Down the rabbit hole", "text": "Down, down, down. Would the fall NEVER come to an end? She had quite time enough to wonder whether cats eat bats, and sometimes whether bats eat cats.", "challenge": "Name five things from the cupboards and book-shelves you passed on the way down, in ten seconds.", "persona": "The Curious One", "size": "big", "picture": ""}, {"caption": "Drinks the shrinking potion", "text": "DRINK ME, said the bottle, and it was NOT marked \"poison\", so she did. Now she is only ten inches high, and the little golden key is still upon the table, quite out of reach.", "challenge": "Cross the room as small as you can possibly make yourself. The Queen shall say whether you were small enough.", "persona": "The Size-Changer", "size": "big", "picture": ""}, {"caption": "A pool of tears", "text": "She cried while nine feet high, shedding gallons of tears, and then shrank, and found herself up to her chin in salt water. \"I wish I hadn't cried so much!\"", "challenge": "Weep most convincingly for five seconds without laughing. Gallons are not required.", "persona": "The Size-Changer", "size": "medium", "picture": ""}, {"caption": "The riddle with no answer", "text": "\"Why is a raven like a writing-desk?\" asked the Hatter. When she gave it up, he admitted that he hadn't the slightest idea either.", "challenge": "Why IS a raven like a writing-desk? Give an answer, and the Queen shall say whether it will do.", "persona": "The Tea Party Guest", "size": "medium", "picture": ""}, {"caption": "Clean cup, move down", "text": "\"I want a clean cup,\" said the Hatter. \"Let's all move one place on.\" She was a good deal worse off than before, as the March Hare had just upset the milk-jug into his plate.", "challenge": "Pour everybody an imaginary cup of tea without spilling a drop. The Queen watches very closely.", "persona": "The Tea Party Guest", "size": "small", "picture": ""}, {"caption": "Painting the roses red", "text": "The gardeners had put in a white rose-tree by mistake, and were painting it red before the Queen found out. She found herself quite unable to keep out of it.", "challenge": "Point to three red things in the room in five seconds, or it's off with your head.", "persona": "Everyone", "size": "medium", "picture": ""}, {"caption": "Croquet with a flamingo", "text": "The balls were live hedgehogs and the mallets live flamingoes, and hers would keep twisting itself round to look up into her face with such a puzzled expression.", "challenge": "Stand on one leg like a flamingo for fifteen seconds. No twisting round.", "persona": "The Rule Questioner", "size": "medium", "picture": ""}, {"caption": "Off with her head!", "text": "\"Off with her head!\" the Queen shouted at the top of her voice. Nobody moved. Still, it is not a pleasant thing to have shouted at one.", "challenge": "Bow to the Queen and pay her a handsome compliment. If she smiles, you keep your head, and your square.", "persona": "The Rule Questioner", "size": "big", "picture": ""}, {"caption": "Asks the Cat for directions", "text": "\"Would you tell me, please, which way I ought to go from here?\" \"That depends a good deal on where you want to get to,\" said the Cat. She didn't much care where, which was rather the trouble.", "challenge": "Give directions to the kitchen using only riddles. The Queen decides whether anybody could follow them.", "persona": "The Curious One", "size": "medium", "picture": ""}, {"caption": "Gets the poem wrong", "text": "She tried \"How doth the little busy bee\", but the words came out quite different: \"How doth the little crocodile improve his shining tail...\"", "challenge": "Recite a nursery rhyme with one word wrong in every line. The Queen keeps count.", "persona": "Everyone", "size": "small", "picture": ""}, {"caption": "Stuck in the Rabbit's house", "text": "She grew so large in the White Rabbit's house that she had to put one arm out of the window and one foot up the chimney. \"Now I can do no more, whatever happens.\"", "challenge": "Make yourself as large as you can without leaving your chair. The Queen judges.", "persona": "The Size-Changer", "size": "small", "picture": ""}]}/*END*/;
 
 // ---- layout: place ladders and snakes on the board (same data + seed = same board)
 // Pure functions, no DOM: tests/layout.test.mjs loads this block (down to the end-layout marker) and tests it.
@@ -699,13 +707,13 @@ BOARD = {
 let TILE;                                       // set by render()
 const state = { turn: 0, revealed: new Set() };
 
-function drawPawns(board) {
+function drawPawns(board, hop) {                 // hop: index of a pawn to draw mid-hop
   const g = document.getElementById("pawns"), byTile = {};
   g.innerHTML = "";
   board.players.forEach((p, i) => (byTile[p.square] ||= []).push(i));
   Object.entries(byTile).forEach(([sq, ids]) => { const t = TILE(+sq);
     ids.forEach((i, k) => {
-      const x = t.cx + (k - (ids.length - 1) / 2) * 26, y = t.y0 + 66, pg = el("g", { class: "pawn", "data-p": i }, g);
+      const x = t.cx + (k - (ids.length - 1) / 2) * 26, y = t.y0 + 66, pg = el("g", { class: i === hop ? "pawn hop" : "pawn", "data-p": i }, g);
       el("ellipse", { cx: x, cy: y + 2, rx: 17, ry: 25, fill: "#FFFFFF", opacity: .75 }, pg);   // halo, so pawns read on any background
       drawPawn(el("g", { transform: `translate(${x} ${y}) scale(1.2) translate(${-x} ${-y})` }, pg), x, y, board.players[i].color);
     }); });
@@ -725,7 +733,7 @@ function enableDrag() {
   const at = e => { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); };
   svg.addEventListener("pointerdown", e => {
     const g = e.target.closest(".pawn");
-    if (!g) return;
+    if (!g || busy) return;
     e.preventDefault(); e.stopPropagation();
     svg.setPointerCapture(e.pointerId);
     drag = { g, i: +g.dataset.p, start: at(e) };
@@ -891,12 +899,55 @@ function showCard(it, onDone) {
   $("modal").hidden = false;
 }
 
-function roll() {
-  if (!$("modal").hidden) return;               // a card is open (Enter/Space on the focused Roll button would roll again)
-  const N = BOARD.rows * BOARD.cols, p = BOARD.players[state.turn], d = 1 + Math.floor(Math.random() * 6);
-  p.square = Math.min(N, p.square + d);
+/* ---- roll animation. busy: something is moving, so Roll and drag are ignored.
+   gen: bumped by build(); an animation that outlives its board stops. */
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const wait = ms => new Promise(r => setTimeout(r, REDUCED ? 0 : ms));
+let busy = false, gen = 0;
+
+const PIPS = { 1: [5], 2: [1, 9], 3: [1, 5, 9], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9] };   // 3x3 grid, 1 = top left
+function drawDie(n) {
+  const svg = $("die"); svg.innerHTML = "";
+  el("rect", { x: 2, y: 2, width: 36, height: 36, rx: 8, fill: T.card, stroke: INK, "stroke-width": 2.4 }, svg);
+  PIPS[n].forEach(k => el("circle", { cx: 9 + ((k - 1) % 3) * 11, cy: 9 + Math.floor((k - 1) / 3) * 11, r: 3.6, fill: INK }, svg));
+}
+
+// slide pawn pi along a straight line to square `to` (climbing a ladder, sliding down a snake); false if the board was rebuilt meanwhile
+function glide(pi, to) {
+  const g = gen, a = TILE(BOARD.players[pi].square), b = TILE(to), pawn = document.querySelector(`#pawns .pawn[data-p="${pi}"]`);
+  const dur = REDUCED ? 0 : 400 + Math.hypot(b.cx - a.cx, b.cy - a.cy) * 1.2;
+  busy = true;
+  return new Promise(done => {
+    const t0 = performance.now();
+    const frame = now => {
+      if (g !== gen) return done(false);
+      const t = dur ? Math.min(1, (now - t0) / dur) : 1, e = t < .5 ? 2 * t * t : 1 - (2 - 2 * t) ** 2 / 2;   // ease in-out
+      pawn.setAttribute("transform", `translate(${(b.cx - a.cx) * e} ${(b.cy - a.cy) * e})`);
+      if (t < 1) return requestAnimationFrame(frame);
+      BOARD.players[pi].square = to; busy = false; done(true);
+    };
+    requestAnimationFrame(frame);
+  });
+}
+
+async function roll() {
+  if (busy || !$("modal").hidden) return;       // moving, or a card is open (Enter/Space on the focused Roll button would roll again)
+  busy = true;
+  const g = gen, pi = state.turn, N = BOARD.rows * BOARD.cols, p = BOARD.players[pi], d = 1 + Math.floor(Math.random() * 6);
+  $("status").textContent = `${p.name} is rolling…`;
+  $("die").classList.add("rolling");
+  for (let k = 0; k < 8; k++) { drawDie(1 + Math.floor(Math.random() * 6)); await wait(70); }
+  $("die").classList.remove("rolling");
+  if (g !== gen) return;
+  drawDie(d);
   $("status").textContent = `${p.name} rolled ${d}`;
-  land(state.turn);
+  for (const target = Math.min(N, p.square + d); p.square < target; ) {
+    p.square++; drawPawns(BOARD, pi);
+    await wait(200);
+    if (g !== gen) return;
+  }
+  busy = false;
+  land(pi);
 }
 
 // player pi has just arrived on their square (by roll or drag): open the card if there is one, then pass the turn
@@ -913,7 +964,7 @@ function land(pi) {
   const i = BOARD.items.findIndex(it => it.from === p.square);
   if (i < 0) return done();
   state.revealed.add(i); refreshCards();
-  showCard(BOARD.items[i], move => { if (move) p.square = BOARD.items[i].to; done(); });
+  showCard(BOARD.items[i], move => { if (!move) return done(); glide(pi, BOARD.items[i].to).then(ok => ok && done()); });
 }
 
 function showRules() {
@@ -938,6 +989,7 @@ function build() {
 
   makeBoard();
   state.turn = 0; state.revealed.clear();
+  gen++; busy = false; $("die").classList.remove("rolling"); drawDie(5);
   $("modal").hidden = true;
   $("warning").hidden = !LAY.dropped.length;
   $("warning").textContent = `⚠ ${LAY.dropped.length} item(s) didn't fit on the board and are missing: ` +
@@ -1088,7 +1140,7 @@ $("d-save").onclick = download;
 $("d-close").onclick = closeDesign;
 addEventListener("hashchange", () => { if (location.hash === "#design") openDesign(); });
 
-$("roll").onclick = roll;
+$("roll").onclick = $("die").onclick = roll;
 $("how").onclick = showRules;
 $("r-close").onclick = () => { $("rules").hidden = true; };
 enableDrag();
